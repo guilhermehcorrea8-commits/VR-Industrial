@@ -1,61 +1,146 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>SENAI VR - Treinamento de Usinagem</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #222; }
-        canvas { display: block; }
-        
-        /* HUD */
-        #hud { position: absolute; top: 20px; left: 20px; right: 20px; display: flex; justify-content: space-between; pointer-events: none; z-index: 10; }
-        #mission-panel { background: rgba(0, 0, 0, 0.8); color: #fff; padding: 15px; border-radius: 8px; border-left: 5px solid #0056b3; max-width: 300px; }
-        #mission-panel h3 { color: #ffcc00; margin-bottom: 5px; }
-        #score-panel { background: rgba(0, 86, 179, 0.9); color: #fff; padding: 15px 25px; border-radius: 8px; font-size: 1.2rem; font-weight: bold; height: fit-content; }
-        
-        /* Botão de VR */
-        #vr-button-container { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 10; }
-        
-        /* Instruções Iniciais */
-        #instructions { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.9); color: #fff; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; z-index: 20; padding: 20px; }
-        #instructions h2 { color: #ffcc00; margin-bottom: 20px; font-size: 2rem; }
-        #instructions p { margin-bottom: 10px; font-size: 1.1rem; }
-        #start-btn { margin-top: 20px; padding: 12px 30px; font-size: 1.2rem; background-color: #0056b3; color: white; border: none; border-radius: 5px; cursor: pointer; transition: background 0.3s; }
-        #start-btn:hover { background-color: #003d82; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+  <meta name="theme-color" content="#101923">
+  <meta name="description"
+        content="Simulador didático de treinamento industrial 3D do SENAI.">
+
+  <title>SENAI | Oficina Industrial VR</title>
+
+  <link rel="stylesheet" href="./style.css">
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
 </head>
+
 <body>
-    <div id="hud">
-        <div id="mission-panel">
-            <h3 id="mission-title">Missão 1: Segurança</h3>
-            <p id="mission-desc">Encontre o Armário de Inflamáveis (vermelho).</p>
+  <div id="game-ui">
+
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">S</div>
+        <div>
+          <div class="brand-title">OFICINA INDUSTRIAL</div>
+          <div class="brand-subtitle">SIMULADOR DIDÁTICO 3D</div>
         </div>
-        <div id="score-panel">
-            <span>Pontuação: </span><span id="score">0</span>
-        </div>
+      </div>
+
+      <div class="top-status">
+        <span class="status-dot"></span>
+        AMBIENTE DE TREINAMENTO
+      </div>
+
+      <div class="xp-box">
+        <span>EXPERIÊNCIA</span>
+        <strong><b id="score">0</b> XP</strong>
+      </div>
+    </header>
+
+    <aside id="mission-panel" class="glass-panel">
+      <div class="section-label">
+        <span class="section-icon">◆</span>
+        OBJETIVO ATUAL
+      </div>
+
+      <h2 id="mission-title">Missão 1 — Segurança</h2>
+
+      <p id="mission-desc">
+        Encontre o armário vermelho e confira os procedimentos de segurança.
+      </p>
+
+      <div class="progress-info">
+        <span>PROGRESSO</span>
+        <span id="mission-count">Missão 1 de 3</span>
+      </div>
+
+      <div class="progress-track">
+        <div id="progress-bar"></div>
+      </div>
+    </aside>
+
+    <div class="crosshair" aria-hidden="true">
+      <span></span>
+      <span></span>
     </div>
+
+    <div id="toast" role="status" aria-live="polite"></div>
 
     <div id="vr-button-container"></div>
 
-    <div id="instructions">
-        <h2>Bem-vindo à Oficina SENAI</h2>
-        <p><strong>Computador:</strong> Use W, A, S, D para andar e o Mouse para olhar.</p>
-        <p><strong>Celular:</strong> Arraste na tela para olhar.</p>
-        <p><strong>VR:</strong> Clique em "Enter VR" para usar os óculos.</p>
-        <p style="margin-top: 15px; color: #aaa;">Mire no centro da tela e clique para interagir.</p>
-        <button id="start-btn">Iniciar Treinamento</button>
+    <div class="bottom-hint">
+      <span class="key-hint">W A S D</span>
+      <span>MOVER</span>
+      <span class="hint-separator">•</span>
+      <span class="key-hint">E</span>
+      <span>INTERAGIR</span>
+      <span class="hint-separator">•</span>
+      <span>MOUSE</span>
+      <span>OLHAR</span>
     </div>
 
-    <script type="importmap">
-        {
-            "imports": {
-                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
-            }
-        }
-    </script>
-    <script type="module" src="main.js"></script>
+    <div id="mobile-controls">
+      <div class="movement-pad">
+        <button data-move="forward" class="move-btn up"
+                aria-label="Mover para frente">▲</button>
+
+        <button data-move="left" class="move-btn left"
+                aria-label="Mover para esquerda">◀</button>
+
+        <button data-move="backward" class="move-btn down"
+                aria-label="Mover para trás">▼</button>
+
+        <button data-move="right" class="move-btn right"
+                aria-label="Mover para direita">▶</button>
+      </div>
+
+      <button id="interact-btn" class="interact-button">
+        INTERAGIR
+      </button>
+    </div>
+
+    <div id="start-overlay">
+      <div class="start-card">
+        <div class="eyebrow">SENAI · MECATRÔNICA</div>
+
+        <div class="start-emblem">VR</div>
+
+        <h1>OFICINA<br><span>INDUSTRIAL</span></h1>
+
+        <p class="start-description">
+          Explore o ambiente, conheça os equipamentos e conclua
+          as etapas de treinamento.
+        </p>
+
+        <div class="feature-list">
+          <div><span>01</span> Segurança e EPIs</div>
+          <div><span>02</span> Operação de máquinas</div>
+          <div><span>03</span> Organização da oficina</div>
+        </div>
+
+        <button id="start-btn" class="start-button">
+          INICIAR TREINAMENTO <span>→</span>
+        </button>
+
+        <div class="start-footer">
+          <span>PC · CELULAR · VR COMPATÍVEL</span>
+          <span>AMBIENTE SIMULADO</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script type="module" src="./main.js"></script>
 </body>
 </html>
