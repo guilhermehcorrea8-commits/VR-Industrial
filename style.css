@@ -1,0 +1,1392 @@
+
+/* =========================================================
+   OFICINA VR SENAI
+   Interface 3D industrial - CSS completo
+   ========================================================= */
+
+/* ---------- 1. Variáveis globais ---------- */
+
+:root {
+    --background: #080d14;
+    --background-light: #101925;
+    --panel: rgba(16, 25, 37, 0.96);
+    --panel-light: #172536;
+
+    --primary: #00d9ff;
+    --primary-dark: #0088a8;
+    --primary-glow: rgba(0, 217, 255, 0.22);
+
+    --success: #32e6a1;
+    --warning: #ffbd4a;
+    --danger: #ff475f;
+
+    --text: #f1f7ff;
+    --text-secondary: #9baec2;
+    --text-muted: #60758b;
+
+    --border: rgba(143, 177, 205, 0.16);
+    --border-active: rgba(0, 217, 255, 0.55);
+
+    --radius: 12px;
+    --radius-small: 7px;
+
+    --header-height: 76px;
+
+    --transition: 180ms ease;
+}
+
+/* ---------- 2. Reset ---------- */
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    width: 100%;
+    min-height: 100%;
+    background: var(--background);
+    color-scheme: dark;
+    scroll-behavior: smooth;
+}
+
+body {
+    width: 100%;
+    min-height: 100vh;
+    overflow-x: hidden;
+
+    color: var(--text);
+    background:
+        radial-gradient(
+            ellipse at 50% 0%,
+            rgba(0, 136, 168, 0.10),
+            transparent 50%
+        ),
+        var(--background);
+
+    font-family:
+        "Segoe UI",
+        Arial,
+        Helvetica,
+        sans-serif;
+
+    font-size: 14px;
+    line-height: 1.5;
+
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+}
+
+button,
+input,
+select {
+    font: inherit;
+}
+
+button {
+    color: inherit;
+}
+
+button:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 3px;
+}
+
+button:disabled {
+    opacity: 0.38;
+    cursor: not-allowed;
+    filter: grayscale(0.6);
+}
+
+button:not(:disabled) {
+    cursor: pointer;
+}
+
+.hidden {
+    display: none !important;
+}
+
+::selection {
+    color: #00141a;
+    background: var(--primary);
+}
+
+/* ---------- 3. Tela de carregamento ---------- */
+
+#loading-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 20px;
+
+    background:
+        radial-gradient(
+            circle at center,
+            rgba(0, 217, 255, 0.10),
+            transparent 45%
+        ),
+        #080d14;
+
+    transition:
+        opacity 350ms ease,
+        visibility 350ms ease;
+}
+
+#loading-screen.loaded {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.loading-card {
+    width: min(100%, 390px);
+    padding: 36px 28px;
+
+    text-align: center;
+
+    border: 1px solid var(--border-active);
+    border-radius: 16px;
+
+    background: rgba(16, 25, 37, 0.95);
+
+    box-shadow:
+        0 0 60px rgba(0, 217, 255, 0.08),
+        0 20px 60px rgba(0, 0, 0, 0.4);
+}
+
+.loading-icon {
+    display: grid;
+    place-items: center;
+
+    width: 76px;
+    height: 76px;
+
+    margin: 0 auto 20px;
+
+    color: var(--primary);
+    font-size: 44px;
+
+    border: 1px solid var(--border-active);
+    border-radius: 50%;
+
+    animation: gear-spin 8s linear infinite;
+}
+
+.loading-card h1 {
+    font-size: 26px;
+    font-weight: 900;
+    letter-spacing: 4px;
+}
+
+.loading-card h1::first-letter {
+    color: var(--primary);
+}
+
+.loading-card p {
+    margin-top: 8px;
+    color: var(--text-secondary);
+}
+
+.loading-bar {
+    height: 5px;
+    margin-top: 28px;
+    overflow: hidden;
+
+    background: #263647;
+    border-radius: 99px;
+}
+
+#loading-progress {
+    width: 0%;
+    height: 100%;
+
+    background: linear-gradient(
+        90deg,
+        var(--primary-dark),
+        var(--primary)
+    );
+
+    box-shadow: 0 0 15px var(--primary-glow);
+
+    transition: width 250ms ease;
+}
+
+#loading-status {
+    display: block;
+    margin-top: 12px;
+
+    color: var(--text-muted);
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+@keyframes gear-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ---------- 4. Interface principal ---------- */
+
+#interface {
+    display: flex;
+    flex-direction: column;
+
+    min-height: 100vh;
+    min-height: 100dvh;
+}
+
+/* ---------- 5. Cabeçalho ---------- */
+
+.topbar {
+    position: relative;
+    z-index: 20;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+
+    min-height: var(--header-height);
+    padding: 12px 24px;
+
+    border-bottom: 1px solid var(--border);
+
+    background: rgba(8, 13, 20, 0.96);
+    backdrop-filter: blur(14px);
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 13px;
+
+    min-width: 0;
+}
+
+.brand-icon {
+    display: grid;
+    place-items: center;
+
+    width: 45px;
+    height: 45px;
+    flex-shrink: 0;
+
+    color: var(--primary);
+    font-size: 27px;
+
+    background: var(--primary-glow);
+    border: 1px solid var(--border-active);
+    border-radius: 10px;
+}
+
+.brand h1 {
+    font-size: 20px;
+    font-weight: 900;
+    line-height: 1.2;
+    letter-spacing: 2px;
+}
+
+.brand h1 span {
+    color: var(--primary);
+}
+
+.brand p {
+    margin-top: 5px;
+
+    color: var(--text-muted);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1.4px;
+}
+
+.topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+
+    padding: 7px 11px;
+
+    color: var(--text-secondary);
+    font-size: 11px;
+
+    border: 1px solid var(--border);
+    border-radius: 99px;
+
+    background: rgba(255, 255, 255, 0.025);
+}
+
+.status-dot {
+    width: 7px;
+    height: 7px;
+
+    background: var(--warning);
+    border-radius: 50%;
+
+    box-shadow: 0 0 10px currentColor;
+}
+
+.status-badge.online .status-dot {
+    background: var(--success);
+}
+
+.status-badge.error .status-dot {
+    background: var(--danger);
+}
+
+.icon-button {
+    display: grid;
+    place-items: center;
+
+    width: 36px;
+    height: 36px;
+
+    color: var(--primary);
+    font-weight: 800;
+
+    border: 1px solid var(--border);
+    border-radius: 50%;
+
+    background: var(--panel-light);
+
+    transition: var(--transition);
+}
+
+.icon-button:hover {
+    border-color: var(--primary);
+    background: var(--primary-glow);
+}
+
+/* ---------- 6. Área 3D ---------- */
+
+#simulation {
+    position: relative;
+    isolation: isolate;
+
+    flex: 1;
+
+    min-height: 460px;
+    height: clamp(460px, 60vh, 850px);
+
+    overflow: hidden;
+
+    background:
+        radial-gradient(
+            ellipse at 50% 50%,
+            #182b3c,
+            #0a111b 75%
+        );
+}
+
+#scene-container {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+
+    width: 100%;
+    height: 100%;
+
+    overflow: hidden;
+}
+
+#scene-container canvas {
+    display: block;
+
+    width: 100%;
+    height: 100%;
+
+    outline: none;
+    touch-action: none;
+}
+
+/* ---------- 7. Título sobre a cena ---------- */
+
+.scene-heading {
+    position: absolute;
+    top: 24px;
+    left: 26px;
+    z-index: 2;
+
+    max-width: min(440px, 60%);
+
+    pointer-events: none;
+
+    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.8);
+}
+
+.eyebrow {
+    display: block;
+
+    color: var(--primary);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 2px;
+}
+
+.scene-heading h2 {
+    margin-top: 6px;
+
+    font-size: clamp(20px, 2.4vw, 32px);
+    font-weight: 850;
+    line-height: 1.2;
+}
+
+.scene-heading p {
+    margin-top: 8px;
+
+    color: #c0cfdd;
+    font-size: 12px;
+}
+
+/* ---------- 8. Mensagens da simulação ---------- */
+
+.message-panel {
+    position: absolute;
+    left: 50%;
+    bottom: 24px;
+    z-index: 5;
+
+    width: max-content;
+    max-width: calc(100% - 32px);
+
+    padding: 12px 18px;
+
+    color: var(--text);
+
+    text-align: center;
+    font-size: 12px;
+
+    border: 1px solid var(--border-active);
+    border-radius: var(--radius);
+
+    background: rgba(8, 13, 20, 0.90);
+    backdrop-filter: blur(12px);
+
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.22);
+
+    transform: translateX(-50%);
+    pointer-events: none;
+}
+
+/* ---------- 9. Controles rápidos ---------- */
+
+.quick-controls {
+    position: absolute;
+    top: 24px;
+    right: 24px;
+    z-index: 3;
+
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+}
+
+.quick-controls button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+
+    min-height: 42px;
+    padding: 0 15px;
+
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 700;
+
+    border: 1px solid var(--border);
+    border-radius: var(--radius-small);
+
+    background: rgba(12, 21, 32, 0.88);
+    backdrop-filter: blur(10px);
+
+    transition:
+        background var(--transition),
+        border-color var(--transition),
+        transform var(--transition);
+}
+
+.quick-controls button:hover {
+    border-color: var(--primary);
+    background: rgba(0, 136, 168, 0.25);
+}
+
+.quick-controls button:active {
+    transform: scale(0.97);
+}
+
+#btn-vr {
+    color: var(--primary);
+    border-color: var(--border-active);
+}
+
+/* ---------- 10. Painel de ajuda ---------- */
+
+.floating-panel {
+    position: absolute;
+    top: 85px;
+    right: 24px;
+    z-index: 30;
+
+    width: min(360px, calc(100% - 32px));
+    padding: 23px;
+
+    border: 1px solid var(--border-active);
+    border-radius: var(--radius);
+
+    background: rgba(12, 21, 32, 0.97);
+    backdrop-filter: blur(18px);
+
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+}
+
+.floating-panel h3 {
+    margin-bottom: 14px;
+
+    font-size: 18px;
+}
+
+.floating-panel ul {
+    padding-left: 19px;
+}
+
+.floating-panel li {
+    margin-bottom: 10px;
+
+    color: var(--text-secondary);
+    font-size: 12px;
+}
+
+.floating-panel li strong {
+    color: var(--text);
+}
+
+.warning-text {
+    margin-top: 16px;
+    padding-top: 14px;
+
+    color: var(--warning);
+    font-size: 11px;
+
+    border-top: 1px solid var(--border);
+}
+
+.close-button {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+
+    width: 30px;
+    height: 30px;
+
+    color: var(--text-secondary);
+    font-size: 24px;
+
+    border: 0;
+    background: transparent;
+}
+
+/* ---------- 11. Retículo de VR ---------- */
+
+#vr-reticle {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    z-index: 4;
+
+    display: none;
+    place-items: center;
+
+    width: 22px;
+    height: 22px;
+
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    border-radius: 50%;
+
+    transform: translate(-50%, -50%);
+
+    pointer-events: none;
+}
+
+#vr-reticle span {
+    width: 4px;
+    height: 4px;
+
+    background: white;
+    border-radius: 50%;
+}
+
+/* Adiciona a classe .vr-active quando a sessão VR iniciar */
+#simulation.vr-active #vr-reticle {
+    display: grid;
+}
+
+/* ---------- 12. Painel de equipamentos ---------- */
+
+.control-dock {
+    position: relative;
+    z-index: 10;
+
+    padding: 24px;
+
+    border-top: 1px solid var(--border);
+
+    background:
+        linear-gradient(
+            180deg,
+            #101925,
+            #0c131d
+        );
+}
+
+.dock-heading {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+
+    margin-bottom: 18px;
+}
+
+.dock-heading h2 {
+    margin-top: 4px;
+
+    font-size: 21px;
+    font-weight: 800;
+}
+
+#machine-count {
+    color: var(--text-muted);
+    font-size: 11px;
+}
+
+/* ---------- 13. Cartões de máquinas ---------- */
+
+.machine-list {
+    display: grid;
+
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.machine-card {
+    position: relative;
+
+    display: flex;
+    align-items: center;
+    gap: 11px;
+
+    min-width: 0;
+    min-height: 95px;
+
+    padding: 15px 12px;
+
+    overflow: hidden;
+
+    text-align: left;
+
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+
+    background:
+        linear-gradient(
+            145deg,
+            rgba(28, 43, 60, 0.85),
+            rgba(15, 24, 36, 0.95)
+        );
+
+    transition:
+        border-color var(--transition),
+        background var(--transition),
+        transform var(--transition),
+        box-shadow var(--transition);
+}
+
+.machine-card::before {
+    content: "";
+
+    position: absolute;
+    top: 0;
+    left: 0;
+
+    width: 100%;
+    height: 2px;
+
+    background: transparent;
+
+    transition: background var(--transition);
+}
+
+.machine-card:hover {
+    border-color: rgba(0, 217, 255, 0.42);
+    transform: translateY(-2px);
+}
+
+.machine-card.active,
+.machine-card.selected {
+    border-color: var(--primary);
+
+    background:
+        linear-gradient(
+            145deg,
+            rgba(0, 136, 168, 0.22),
+            rgba(15, 24, 36, 0.98)
+        );
+
+    box-shadow: inset 0 0 24px rgba(0, 217, 255, 0.05);
+}
+
+.machine-card.active::before,
+.machine-card.selected::before {
+    background: var(--primary);
+}
+
+.machine-number {
+    position: absolute;
+    top: 7px;
+    right: 9px;
+
+    color: var(--text-muted);
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 1px;
+}
+
+.machine-symbol {
+    display: grid;
+    place-items: center;
+
+    width: 42px;
+    height: 42px;
+    flex-shrink: 0;
+
+    color: var(--primary);
+    font-size: 24px;
+
+    border: 1px solid var(--border);
+    border-radius: 9px;
+
+    background: rgba(0, 217, 255, 0.07);
+}
+
+.machine-info {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+
+    min-width: 0;
+}
+
+.machine-info strong {
+    overflow-wrap: anywhere;
+
+    color: var(--text);
+    font-size: 11px;
+    font-weight: 750;
+    line-height: 1.35;
+}
+
+.machine-info small {
+    color: var(--text-muted);
+    font-size: 10px;
+    line-height: 1.4;
+}
+
+.machine-arrow {
+    margin-left: auto;
+    flex-shrink: 0;
+
+    color: var(--text-muted);
+    font-size: 23px;
+}
+
+/* ---------- 14. Ações do equipamento ---------- */
+
+.machine-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+
+    margin-top: 18px;
+    padding-top: 18px;
+
+    border-top: 1px solid var(--border);
+}
+
+.selected-machine {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+
+    min-width: 0;
+}
+
+.selection-indicator {
+    width: 9px;
+    height: 9px;
+    flex-shrink: 0;
+
+    background: var(--text-muted);
+    border-radius: 50%;
+}
+
+.selected-machine small {
+    display: block;
+
+    color: var(--text-muted);
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 1px;
+}
+
+.selected-machine strong {
+    display: block;
+    margin-top: 3px;
+
+    overflow-wrap: anywhere;
+
+    color: var(--text);
+    font-size: 12px;
+}
+
+.action-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 9px;
+}
+
+.action-buttons button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+
+    min-height: 40px;
+    padding: 0 15px;
+
+    font-size: 11px;
+    font-weight: 800;
+
+    border: 1px solid transparent;
+    border-radius: var(--radius-small);
+
+    transition:
+        background var(--transition),
+        border-color var(--transition),
+        transform var(--transition);
+}
+
+.action-buttons button:not(:disabled):active {
+    transform: scale(0.97);
+}
+
+.button-primary {
+    color: #041610;
+
+    background: var(--success);
+}
+
+.button-primary:not(:disabled):hover {
+    background: #5af0b8;
+}
+
+.button-secondary {
+    color: var(--text);
+
+    border-color: var(--border) !important;
+    background: var(--panel-light);
+}
+
+.button-secondary:not(:disabled):hover {
+    border-color: var(--primary) !important;
+}
+
+.button-danger {
+    color: #fff;
+
+    background: rgba(255, 71, 95, 0.15);
+    border-color: rgba(255, 71, 95, 0.5) !important;
+}
+
+.button-danger:not(:disabled):hover {
+    background: rgba(255, 71, 95, 0.3);
+}
+
+/* ---------- 15. Rodapé ---------- */
+
+.footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+
+    padding: 13px 24px;
+
+    color: var(--text-muted);
+    font-size: 10px;
+
+    border-top: 1px solid var(--border);
+    background: #080d14;
+}
+
+.footer span:first-child {
+    color: var(--primary);
+    font-weight: 800;
+    letter-spacing: 1px;
+}
+
+/* ---------- 16. Tablets ---------- */
+
+@media (max-width: 1100px) {
+    .machine-list {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .machine-card {
+        min-height: 85px;
+    }
+
+    .machine-info strong {
+        font-size: 12px;
+    }
+
+    #simulation {
+        height: 58vh;
+        min-height: 430px;
+    }
+}
+
+/* ---------- 17. Celulares ---------- */
+
+@media (max-width: 700px) {
+    :root {
+        --header-height: 64px;
+    }
+
+    body {
+        font-size: 13px;
+    }
+
+    .topbar {
+        min-height: var(--header-height);
+        padding: 10px 13px;
+        gap: 10px;
+    }
+
+    .brand {
+        gap: 9px;
+    }
+
+    .brand-icon {
+        width: 37px;
+        height: 37px;
+        font-size: 22px;
+    }
+
+    .brand h1 {
+        font-size: 16px;
+        letter-spacing: 1.4px;
+    }
+
+    .brand p {
+        max-width: 190px;
+        font-size: 8px;
+        letter-spacing: 0.7px;
+    }
+
+    .topbar-actions {
+        gap: 7px;
+    }
+
+    .status-badge {
+        gap: 6px;
+        padding: 6px 8px;
+        font-size: 9px;
+    }
+
+    .icon-button {
+        width: 32px;
+        height: 32px;
+    }
+
+    #simulation {
+        min-height: 430px;
+        height: 60vh;
+        height: 60dvh;
+    }
+
+    .scene-heading {
+        top: 15px;
+        left: 14px;
+
+        max-width: 58%;
+    }
+
+    .scene-heading h2 {
+        font-size: 19px;
+    }
+
+    .scene-heading p {
+        max-width: 250px;
+        font-size: 10px;
+    }
+
+    .eyebrow {
+        font-size: 9px;
+        letter-spacing: 1.3px;
+    }
+
+    .quick-controls {
+        top: 14px;
+        right: 12px;
+        gap: 7px;
+    }
+
+    .quick-controls button {
+        min-height: 38px;
+        padding: 0 11px;
+        font-size: 11px;
+    }
+
+    .message-panel {
+        bottom: 13px;
+
+        max-width: calc(100% - 24px);
+        padding: 10px 13px;
+
+        font-size: 11px;
+    }
+
+    .floating-panel {
+        top: 65px;
+        right: 12px;
+
+        width: min(340px, calc(100% - 24px));
+        padding: 20px;
+    }
+
+    .control-dock {
+        padding: 18px 13px;
+    }
+
+    .dock-heading {
+        margin-bottom: 13px;
+    }
+
+    .dock-heading h2 {
+        font-size: 19px;
+    }
+
+    .machine-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 9px;
+    }
+
+    .machine-card {
+        min-height: 84px;
+        padding: 13px 9px;
+        gap: 8px;
+    }
+
+    .machine-symbol {
+        width: 35px;
+        height: 35px;
+        font-size: 20px;
+    }
+
+    .machine-info strong {
+        font-size: 10px;
+    }
+
+    .machine-info small {
+        font-size: 9px;
+    }
+
+    .machine-arrow {
+        font-size: 19px;
+    }
+
+    .machine-actions {
+        align-items: stretch;
+        flex-direction: column;
+        gap: 14px;
+    }
+
+    .action-buttons {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+    }
+
+    .action-buttons button {
+        min-height: 42px;
+        padding: 0 8px;
+        font-size: 11px;
+    }
+
+    .button-danger {
+        grid-column: 1 / -1;
+    }
+
+    .footer {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 7px 15px;
+
+        padding: 12px;
+        text-align: center;
+        font-size: 9px;
+    }
+}
+
+/* ---------- 18. Celulares pequenos ---------- */
+
+@media (max-width: 380px) {
+    .brand p {
+        max-width: 145px;
+        font-size: 7px;
+    }
+
+    .status-badge {
+        max-width: 92px;
+        overflow: hidden;
+        white-space: nowrap;
+    }
+
+    .scene-heading {
+        max-width: 54%;
+    }
+
+    .scene-heading h2 {
+        font-size: 17px;
+    }
+
+    .quick-controls button {
+        min-height: 35px;
+        padding: 0 9px;
+        font-size: 10px;
+    }
+
+    .quick-controls button span {
+        max-width: 90px;
+    }
+
+    .machine-list {
+        gap: 7px;
+    }
+
+    .machine-card {
+        gap: 7px;
+        padding: 12px 7px;
+    }
+
+    .machine-symbol {
+        width: 30px;
+        height: 30px;
+        font-size: 17px;
+    }
+
+    .machine-info strong {
+        font-size: 9px;
+    }
+}
+
+/* ---------- 19. Paisagem em celular ---------- */
+
+@media (max-width: 900px) and (orientation: landscape) {
+    #simulation {
+        height: 72vh;
+        min-height: 320px;
+    }
+
+    .scene-heading {
+        top: 12px;
+    }
+
+    .quick-controls {
+        top: 12px;
+    }
+
+    .control-dock {
+        padding: 15px;
+    }
+}
+
+/* ---------- 20. Acessibilidade ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* ---------- 21. VR: interface 2D fora do headset ---------- */
+
+/*
+   O modo imersivo depende do WebXR e do main.js.
+   Não esconda os controles automaticamente sem testar
+   a interação dentro do headset.
+*/
+
+body.vr-mode .topbar,
+body.vr-mode .control-dock,
+body.vr-mode .footer {
+    /* O main.js pode controlar a visibilidade durante o VR. */
+}
+
+/* CONTROLES DE JOGO PARA CELULAR */
+
+#mobile-controls {
+    position: fixed;
+    inset: auto 0 20px 0;
+    z-index: 100;
+
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+
+    padding: 0 20px;
+
+    pointer-events: none;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+#mobile-joystick {
+    position: relative;
+
+    display: grid;
+    place-items: center;
+
+    width: 120px;
+    height: 120px;
+
+    border: 2px solid rgba(220, 240, 255, 0.35);
+    border-radius: 50%;
+
+    background: rgba(15, 28, 40, 0.55);
+
+    touch-action: none;
+    pointer-events: auto;
+}
+
+#mobile-stick {
+    width: 48px;
+    height: 48px;
+
+    border: 2px solid rgba(0, 217, 255, 0.85);
+    border-radius: 50%;
+
+    background: rgba(0, 160, 205, 0.65);
+    box-shadow: 0 0 18px rgba(0, 217, 255, 0.2);
+
+    pointer-events: none;
+}
+
+#mobile-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 10px;
+
+    pointer-events: auto;
+}
+
+#mobile-actions button {
+    min-width: 110px;
+    min-height: 48px;
+
+    padding: 10px 15px;
+
+    color: #f4fbff;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+
+    border: 1px solid rgba(0, 217, 255, 0.65);
+    border-radius: 12px;
+
+    background: rgba(8, 25, 38, 0.9);
+
+    touch-action: manipulation;
+}
+
+#mobile-actions button:active {
+    background: rgba(0, 136, 168, 0.9);
+}
+
+#mobile-run {
+    border-color: rgba(255, 189, 74, 0.7) !important;
+}
+
+#mobile-hint {
+    position: absolute;
+    left: 50%;
+    bottom: 132px;
+
+    width: max-content;
+    max-width: 85%;
+
+    color: white;
+    font-size: 10px;
+    text-align: center;
+
+    text-shadow: 0 2px 5px black;
+    transform: translateX(-50%);
+
+    pointer-events: none;
+}
+
+@media (pointer: fine) {
+    #mobile-controls {
+        display: none;
+    }
+}
+
+@media (max-width: 480px) {
+    #mobile-controls {
+        bottom: 12px;
+        padding: 0 12px;
+    }
+
+    #mobile-joystick {
+        width: 100px;
+        height: 100px;
+    }
+
+    #mobile-stick {
+        width: 42px;
+        height: 42px;
+    }
+
+    #mobile-actions button {
+        min-width: 95px;
+        min-height: 43px;
+        padding: 8px;
+        font-size: 10px;
+    }
+
+    #mobile-hint {
+        bottom: 112px;
+    }
+}

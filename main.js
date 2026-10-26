@@ -2,14 +2,14 @@
 import * as THREE from 'three';
 import { VRButton } from 'three/addons/webxr/VRButton.js';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+import { CincoMaquinasSENAI } from './cinco-maquinas.js';
 
-/*
-  OFICINA INDUSTRIAL VR — SENAI
-  Parte 3.1: cena, câmera, iluminação e materiais.
-  As próximas partes serão adicionadas abaixo deste código.
-*/
+/* =========================================
+   PARTE 3.1 — CONFIGURAÇÃO INICIAL
+========================================= */
 
 const scene = new THREE.Scene();
+
 scene.background = new THREE.Color(0x9daeb8);
 scene.fog = new THREE.Fog(0x9daeb8, 38, 105);
 
@@ -24,14 +24,21 @@ const camera = new THREE.PerspectiveCamera(
 camera.position.set(0, 1.68, 23);
 camera.rotation.order = 'YXZ';
 
-// Renderizador 3D
+// Renderizador
 const renderer = new THREE.WebGLRenderer({
   antialias: true,
   powerPreference: 'high-performance'
 });
 
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.7));
-renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(
+  Math.min(window.devicePixelRatio, 1.7)
+);
+
+renderer.setSize(
+  window.innerWidth,
+  window.innerHeight
+);
+
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -41,1867 +48,1008 @@ renderer.xr.enabled = true;
 
 document.body.appendChild(renderer.domElement);
 
-// Botão para entrar no modo VR
+// Botão VR
 const vrContainer = document.getElementById('vr-button-container');
 
-vrContainer.appendChild(
-  VRButton.createButton(renderer)
-);
+if (vrContainer) {
+  vrContainer.appendChild(
+    VRButton.createButton(renderer)
+  );
+}
 
-// Controles do mouse
+// Controles de mouse
 const controls = new PointerLockControls(
   camera,
   renderer.domElement
 );
 
-// Materiais da oficina
-const mats = {
-  concrete: new THREE.MeshStandardMaterial({
-    color: 0x777d80,
-    roughness: 0.92
-  }),
+// Carregar as cinco máquinas somente depois de criar a cena
+const maquinas = new CincoMaquinasSENAI(
+  scene,
+  (mensagem) => {
+    console.log(mensagem);
 
-  brick: new THREE.MeshStandardMaterial({
-    color: 0x944b3d,
+    const elemento = document.querySelector(
+      '#mensagem-maquinas'
+    );
+
+    if (elemento) {
+      elemento.textContent = mensagem;
+    }
+  }
+);
+
+await maquinas.carregarTodas();
+
+// Continue aqui com os materiais, a iluminação,
+// a estrutura do galpão e os controles existentes.
+
+// ================================================
+// PARTE 3.2 — MATERIAIS E TEXTURAS INDUSTRIAIS
+// ================================================
+
+function criarTexturaTijolos() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#b6b0a8';
+  ctx.fillRect(0, 0, 512, 512);
+
+  const largura = 90;
+  const altura = 32;
+  const junta = 5;
+
+  for (let y = 0; y < 512; y += altura + junta) {
+    const deslocamento =
+      Math.floor(y / (altura + junta)) % 2 === 0
+        ? 0
+        : largura / 2;
+
+    for (let x = -largura; x < 512; x += largura + junta) {
+      const variacao = Math.floor(Math.random() * 24);
+
+      const vermelho = 125 + variacao;
+      const verde = 48 + Math.floor(variacao / 3);
+      const azul = 37 + Math.floor(variacao / 4);
+
+      ctx.fillStyle = `rgb(${vermelho},${verde},${azul})`;
+      ctx.fillRect(x + deslocamento, y, largura, altura);
+    }
+  }
+
+  const textura = new THREE.CanvasTexture(canvas);
+  textura.colorSpace = THREE.SRGBColorSpace;
+  textura.wrapS = THREE.RepeatWrapping;
+  textura.wrapT = THREE.RepeatWrapping;
+  textura.anisotropy = renderer.capabilities.getMaxAnisotropy();
+
+  return textura;
+}
+
+function criarTexturaConcreto() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#777b7d';
+  ctx.fillRect(0, 0, 512, 512);
+
+  for (let i = 0; i < 4500; i++) {
+    const x = Math.random() * 512;
+    const y = Math.random() * 512;
+    const tamanho = Math.random() * 3 + 1;
+    const tom = Math.floor(75 + Math.random() * 90);
+
+    ctx.fillStyle = `rgba(${tom},${tom},${tom},0.3)`;
+    ctx.fillRect(x, y, tamanho, tamanho);
+  }
+
+  // Juntas discretas do piso
+  ctx.strokeStyle = '#55595b';
+  ctx.lineWidth = 2;
+
+  for (let i = 0; i <= 512; i += 128) {
+    ctx.beginPath();
+    ctx.moveTo(i, 0);
+    ctx.lineTo(i, 512);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(0, i);
+    ctx.lineTo(512, i);
+    ctx.stroke();
+  }
+
+  const textura = new THREE.CanvasTexture(canvas);
+  textura.colorSpace = THREE.SRGBColorSpace;
+  textura.wrapS = THREE.RepeatWrapping;
+  textura.wrapT = THREE.RepeatWrapping;
+  textura.repeat.set(8, 8);
+
+  return textura;
+}
+
+function criarTexturaTelhado() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 512;
+
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#8c969a';
+  ctx.fillRect(0, 0, 256, 512);
+
+  ctx.strokeStyle = '#657075';
+  ctx.lineWidth = 5;
+
+  for (let x = 0; x < 256; x += 24) {
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, 512);
+    ctx.stroke();
+  }
+
+  ctx.strokeStyle = '#b0b8bb';
+  ctx.lineWidth = 1;
+
+  for (let x = 8; x < 256; x += 24) {
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, 512);
+    ctx.stroke();
+  }
+
+  const textura = new THREE.CanvasTexture(canvas);
+  textura.colorSpace = THREE.SRGBColorSpace;
+  textura.wrapS = THREE.RepeatWrapping;
+  textura.wrapT = THREE.RepeatWrapping;
+  textura.repeat.set(5, 4);
+
+  return textura;
+}
+
+const mats = {
+  concreto: new THREE.MeshStandardMaterial({
+    map: criarTexturaConcreto(),
     roughness: 0.95
   }),
 
-  plaster: new THREE.MeshStandardMaterial({
-    color: 0xd0d0c9,
+  tijolo: new THREE.MeshStandardMaterial({
+    map: criarTexturaTijolos(),
+    roughness: 0.92
+  }),
+
+  reboco: new THREE.MeshStandardMaterial({
+    color: 0xc6c8c5,
     roughness: 0.9
   }),
 
-  roof: new THREE.MeshStandardMaterial({
-    color: 0xc2c9cb,
+  telhado: new THREE.MeshStandardMaterial({
+    map: criarTexturaTelhado(),
     roughness: 0.8,
     metalness: 0.35,
     side: THREE.DoubleSide
   }),
 
-  green: new THREE.MeshStandardMaterial({
-    color: 0x176744,
+  verde: new THREE.MeshStandardMaterial({
+    color: 0x17653c,
     roughness: 0.55,
-    metalness: 0.35
+    metalness: 0.45
   }),
 
-  blue: new THREE.MeshStandardMaterial({
+  metal: new THREE.MeshStandardMaterial({
+    color: 0x596267,
+    roughness: 0.42,
+    metalness: 0.75
+  }),
+
+  metalEscuro: new THREE.MeshStandardMaterial({
+    color: 0x30373b,
+    roughness: 0.6,
+    metalness: 0.7
+  }),
+
+  azul: new THREE.MeshStandardMaterial({
     color: 0x174c79,
     roughness: 0.4,
     metalness: 0.35
   }),
 
-  blueLight: new THREE.MeshStandardMaterial({
-    color: 0x2878a8,
-    roughness: 0.4,
-    metalness: 0.3
+  amarelo: new THREE.MeshStandardMaterial({
+    color: 0xf2c62d,
+    roughness: 0.6
   }),
 
-  steel: new THREE.MeshStandardMaterial({
-    color: 0x646e73,
-    roughness: 0.45,
-    metalness: 0.75
-  }),
-
-  darkSteel: new THREE.MeshStandardMaterial({
-    color: 0x30383d,
-    roughness: 0.6,
-    metalness: 0.65
-  }),
-
-  yellow: new THREE.MeshStandardMaterial({
-    color: 0xf4c62f,
-    roughness: 0.55
-  }),
-
-  red: new THREE.MeshStandardMaterial({
-    color: 0xb92727,
-    roughness: 0.55
-  }),
-
-  white: new THREE.MeshStandardMaterial({
-    color: 0xe8e9e5,
+  branco: new THREE.MeshStandardMaterial({
+    color: 0xe8e8e4,
     roughness: 0.65
   }),
 
-  glass: new THREE.MeshStandardMaterial({
-    color: 0x8dc6dd,
+  vidro: new THREE.MeshStandardMaterial({
+    color: 0x82c6df,
     transparent: true,
-    opacity: 0.42,
-    roughness: 0.18,
-    metalness: 0.1
+    opacity: 0.48,
+    roughness: 0.2,
+    side: THREE.DoubleSide
   }),
 
-  rubber: new THREE.MeshStandardMaterial({
-    color: 0x202326,
-    roughness: 0.95
+  luz: new THREE.MeshBasicMaterial({
+    color: 0xfff2cb
   }),
 
-  wood: new THREE.MeshStandardMaterial({
-    color: 0x8b6544,
-    roughness: 0.8
-  }),
-
-  lamp: new THREE.MeshBasicMaterial({
-    color: 0xfff3ce
+  vermelho: new THREE.MeshStandardMaterial({
+    color: 0xc52b2b,
+    roughness: 0.55
   })
 };
 
-// Iluminação geral do galpão
+// ================================================
+// PARTE 3.3 — ILUMINAÇÃO
+// ================================================
+
 scene.add(
   new THREE.HemisphereLight(
-    0xeaf4ff,
-    0x555047,
+    0xe8f3ff,
+    0x62584b,
     2.0
   )
 );
 
-// Luz principal
-const sun = new THREE.DirectionalLight(
-  0xfff0d7,
-  2.3
+const luzPrincipal = new THREE.DirectionalLight(
+  0xfff0d8,
+  2.5
 );
 
-sun.position.set(-18, 30, 12);
-sun.castShadow = true;
+luzPrincipal.position.set(-15, 24, 12);
+luzPrincipal.castShadow = true;
+luzPrincipal.shadow.mapSize.set(2048, 2048);
+luzPrincipal.shadow.camera.left = -35;
+luzPrincipal.shadow.camera.right = 35;
+luzPrincipal.shadow.camera.top = 35;
+luzPrincipal.shadow.camera.bottom = -35;
 
-sun.shadow.mapSize.set(2048, 2048);
-sun.shadow.camera.left = -42;
-sun.shadow.camera.right = 42;
-sun.shadow.camera.top = 42;
-sun.shadow.camera.bottom = -42;
+scene.add(luzPrincipal);
 
-scene.add(sun);
+// ================================================
+// PARTE 3.4 — FUNÇÕES PARA CONSTRUIR O GALPÃO
+// ================================================
 
-// Grupo principal da estrutura
-const building = new THREE.Group();
-scene.add(building);
+const galpao = new THREE.Group();
+galpao.name = 'GalpaoIndustrial';
+scene.add(galpao);
 
-// Função para criar blocos e peças retangulares
-function addBox(
-  parent,
-  name,
-  size,
-  pos,
+function criarCaixa(
+  nome,
+  tamanho,
+  posicao,
   material,
-  opts = {}
+  rotacao = [0, 0, 0]
 ) {
-  const mesh = new THREE.Mesh(
-    new THREE.BoxGeometry(
-      size[0],
-      size[1],
-      size[2]
-    ),
-    material
+  const geometria = new THREE.BoxGeometry(
+    tamanho[0],
+    tamanho[1],
+    tamanho[2]
   );
 
-  mesh.name = name || '';
+  const objeto = new THREE.Mesh(geometria, material);
 
-  mesh.position.set(
-    pos[0],
-    pos[1],
-    pos[2]
-  );
+  objeto.name = nome;
+  objeto.position.set(posicao[0], posicao[1], posicao[2]);
+  objeto.rotation.set(rotacao[0], rotacao[1], rotacao[2]);
+  objeto.castShadow = true;
+  objeto.receiveShadow = true;
 
-  if (opts.rot) {
-    mesh.rotation.set(
-      opts.rot[0],
-      opts.rot[1],
-      opts.rot[2]
-    );
-  }
-
-  mesh.castShadow = opts.castShadow !== false;
-  mesh.receiveShadow = true;
-
-  parent.add(mesh);
-
-  return mesh;
+  galpao.add(objeto);
+  return objeto;
 }
 
-// Função para criar cilindros
-function addCylinder(
-  parent,
-  name,
-  radiusTop,
-  radiusBottom,
-  height,
-  pos,
-  material,
-  segments = 20
-) {
-  const mesh = new THREE.Mesh(
-    new THREE.CylinderGeometry(
-      radiusTop,
-      radiusBottom,
-      height,
-      segments
-    ),
-    material
-  );
+function criarVigaEntre(a, b, espessura, material) {
+  const inicio = new THREE.Vector3(a[0], a[1], a[2]);
+  const fim = new THREE.Vector3(b[0], b[1], b[2]);
 
-  mesh.name = name || '';
+  const direcao = new THREE.Vector3().subVectors(fim, inicio);
 
-  mesh.position.set(
-    pos[0],
-    pos[1],
-    pos[2]
-  );
-
-  mesh.castShadow = true;
-  mesh.receiveShadow = true;
-
-  parent.add(mesh);
-
-  return mesh;
-}
-
-// Função para criar vigas inclinadas entre dois pontos
-function beamBetween(
-  parent,
-  a,
-  b,
-  thickness,
-  material
-) {
-  const A = new THREE.Vector3(
-    a[0], a[1], a[2]
-  );
-
-  const B = new THREE.Vector3(
-    b[0], b[1], b[2]
-  );
-
-  const direction = new THREE.Vector3()
-    .subVectors(B, A);
-
-  const mesh = new THREE.Mesh(
+  const viga = new THREE.Mesh(
     new THREE.BoxGeometry(
-      thickness,
-      direction.length(),
-      thickness
+      espessura,
+      direcao.length(),
+      espessura
     ),
     material
   );
 
-  mesh.position.copy(A)
-    .add(B)
-    .multiplyScalar(0.5);
-
-  mesh.quaternion.setFromUnitVectors(
+  viga.position.copy(inicio).add(fim).multiplyScalar(0.5);
+  viga.quaternion.setFromUnitVectors(
     new THREE.Vector3(0, 1, 0),
-    direction.normalize()
+    direcao.normalize()
   );
 
-  mesh.castShadow = true;
-  mesh.receiveShadow = true;
+  viga.castShadow = true;
+  viga.receiveShadow = true;
+  galpao.add(viga);
 
-  parent.add(mesh);
-
-  return mesh;
+  return viga;
 }
 
-// Função para criar placas com texto
-function makeLabel(
-  text,
-  width = 512,
-  height = 128,
-  bg = '#143449',
-  fg = '#ffffff'
-) {
+function criarPlaca(texto, largura = 3, altura = 0.7) {
   const canvas = document.createElement('canvas');
-
-  canvas.width = width;
-  canvas.height = height;
+  canvas.width = 512;
+  canvas.height = 128;
 
   const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#153e32';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, width, height);
-
-  ctx.fillStyle = fg;
-  ctx.font = 'bold 42px Arial';
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 36px Arial';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
+  ctx.fillText(texto, 256, 64, 480);
 
-  ctx.fillText(
-    text,
-    width / 2,
-    height / 2,
-    width - 24
+  const textura = new THREE.CanvasTexture(canvas);
+  textura.colorSpace = THREE.SRGBColorSpace;
+
+  const placa = new THREE.Mesh(
+    new THREE.PlaneGeometry(largura, altura),
+    new THREE.MeshBasicMaterial({
+      map: textura,
+      side: THREE.DoubleSide
+    })
   );
 
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
-
-  return new THREE.MeshBasicMaterial({
-    map: texture
-  });
+  return placa;
 }
 
-// Placas que serão usadas nas próximas partes
-const signMat = makeLabel(
-  'ÁREA DE MECATRÔNICA'
-);
+// ================================================
+// PARTE 3.5 — PISO INDUSTRIAL
+// ================================================
 
-const drillSignMat = makeLabel(
-  'FURAÇÃO • USE EPI',
-  512,
-  128,
-  '#174c79'
-);
-
-const maintenanceSignMat = makeLabel(
-  'BANCADA DE MANUTENÇÃO',
-  512,
-  128,
-  '#37434b'
-);
-
-const safetySignMat = makeLabel(
-  'SEGURANÇA • EPIs',
-  512,
-  128,
-  '#a32222'
-);
-
-/* =========================================================
-   PARTE 3.2 — ESTRUTURA DO GALPÃO INDUSTRIAL
-   Cole abaixo da Parte 3.1.
-   ========================================================= */
-
-// Piso industrial
-addBox(
-  building,
-  'Piso industrial',
-  [60, 0.25, 64],
+criarCaixa(
+  'Piso de concreto',
+  [60, 0.3, 64],
   [0, -0.15, 0],
-  mats.concrete
+  mats.concreto
 );
 
-// Grade visual discreta no piso
-const floorGrid = new THREE.GridHelper(
+// Linhas de referência do piso
+const gradePiso = new THREE.GridHelper(
   60,
   30,
-  0x555d60,
-  0x666d70
+  0x555b5e,
+  0x656b6d
 );
 
-floorGrid.position.y = -0.015;
-building.add(floorGrid);
+gradePiso.position.y = 0.006;
+galpao.add(gradePiso);
 
-// ---------------------------------------------------------
-// PAREDE DO FUNDO
-// ---------------------------------------------------------
+// ================================================
+// PARTE 3.6 — PAREDES DO GALPÃO
+// Área aproximada: 60 x 64 metros
+// ================================================
 
-addBox(
-  building,
-  'Parede traseira inferior esquerda',
+// Fundo: parede inferior de tijolos
+criarCaixa(
+  'Parede traseira tijolos esquerda',
   [21, 3.2, 0.5],
   [-19.5, 1.6, -31.8],
-  mats.brick
+  mats.tijolo
 );
 
-addBox(
-  building,
-  'Parede traseira inferior direita',
+criarCaixa(
+  'Parede traseira tijolos direita',
   [21, 3.2, 0.5],
   [19.5, 1.6, -31.8],
-  mats.brick
+  mats.tijolo
 );
 
-// Parte superior da parede do fundo
-addBox(
-  building,
+// Parte superior do fundo
+criarCaixa(
   'Parede traseira superior',
-  [60, 3.1, 0.5],
-  [0, 5.55, -31.8],
-  mats.plaster
+  [60, 4.5, 0.5],
+  [0, 5.45, -31.8],
+  mats.reboco
 );
 
-addBox(
-  building,
-  'Parede traseira acima das janelas',
-  [60, 1.2, 0.5],
-  [0, 7.7, -31.8],
-  mats.plaster
-);
-
-// ---------------------------------------------------------
-// PAREDES LATERAIS
-// ---------------------------------------------------------
-
+// Paredes laterais
 for (const x of [-29.8, 29.8]) {
-  // Parte inferior em tijolo
-  addBox(
-    building,
-    'Parede lateral de tijolos',
+  criarCaixa(
+    'Parede lateral inferior de tijolos',
     [0.5, 3.2, 64],
     [x, 1.6, 0],
-    mats.brick
+    mats.tijolo
   );
 
-  // Parte superior rebocada
-  addBox(
-    building,
-    'Parede lateral rebocada',
-    [0.5, 4.2, 64],
-    [x, 5.3, 0],
-    mats.plaster
+  criarCaixa(
+    'Parede lateral superior',
+    [0.5, 4.5, 64],
+    [x, 5.45, 0],
+    mats.reboco
   );
 
-  // Viga estrutural verde
-  addBox(
-    building,
-    'Viga lateral verde',
+  criarCaixa(
+    'Viga longitudinal verde',
     [0.35, 0.35, 64],
-    [x * 0.985, 7.55, 0],
-    mats.green
+    [x * 0.985, 7.8, 0],
+    mats.verde
   );
 }
 
-// ---------------------------------------------------------
-// FRENTE DO GALPÃO E ACESSO PRINCIPAL
-// ---------------------------------------------------------
-
-// Paredes laterais deixam um vão central para o portão
-addBox(
-  building,
-  'Frente esquerda',
+// Frente com abertura central para entrada
+criarCaixa(
+  'Parede frontal esquerda',
   [20, 3.2, 0.5],
   [-20, 1.6, 31.8],
-  mats.brick
+  mats.tijolo
 );
 
-addBox(
-  building,
-  'Frente direita',
+criarCaixa(
+  'Parede frontal direita',
   [20, 3.2, 0.5],
   [20, 1.6, 31.8],
-  mats.brick
+  mats.tijolo
 );
 
-addBox(
-  building,
-  'Frente superior',
-  [60, 3.7, 0.5],
-  [0, 5.65, 31.8],
-  mats.plaster
+criarCaixa(
+  'Parede frontal superior',
+  [60, 4.5, 0.5],
+  [0, 5.45, 31.8],
+  mats.reboco
 );
 
-addBox(
-  building,
-  'Viga frontal verde',
-  [60, 0.35, 0.45],
-  [0, 7.55, 31.6],
-  mats.green
+// ================================================
+// PARTE 3.7 — TELHADO METÁLICO INCLINADO
+// ================================================
+
+// Cobertura com inclinação suave de um lado ao outro.
+const inclinacao = 0.10;
+const larguraTelhado = 61;
+const profundidadeTelhado = 65;
+
+const cobertura = new THREE.Mesh(
+  new THREE.PlaneGeometry(
+    larguraTelhado,
+    profundidadeTelhado
+  ),
+  mats.telhado
 );
 
-// Guias do portão
-addBox(
-  building,
-  'Guia portão esquerda',
-  [0.18, 3.2, 0.18],
-  [-10, 1.6, 31.35],
-  mats.darkSteel
+cobertura.rotation.x = -Math.PI / 2;
+cobertura.rotation.z = inclinacao;
+cobertura.position.set(
+  0,
+  8.3,
+  0
 );
 
-addBox(
-  building,
-  'Guia portão direita',
-  [0.18, 3.2, 0.18],
-  [10, 1.6, 31.35],
-  mats.darkSteel
-);
+cobertura.castShadow = true;
+cobertura.receiveShadow = true;
+galpao.add(cobertura);
 
-// Réguas do portão recolhido
-for (let i = 0; i < 8; i++) {
-  addBox(
-    building,
-    'Régua portão recolhida',
-    [19.8, 0.16, 0.12],
-    [0, 3.25 + i * 0.17, 31.25],
-    mats.steel
-  );
-}
-
-// ---------------------------------------------------------
-// TELHADO INDUSTRIAL
-// ---------------------------------------------------------
-
-const roof = new THREE.Mesh(
-  new THREE.PlaneGeometry(61, 65),
-  mats.roof
-);
-
-roof.rotation.x = Math.PI / 2;
-roof.rotation.z = -0.055;
-roof.position.set(0, 8.05, 0);
-roof.receiveShadow = true;
-
-building.add(roof);
-
-// ---------------------------------------------------------
-// TRELIÇAS METÁLICAS VERDES
-// ---------------------------------------------------------
-
+// Treliças verdes transversais
 for (let z = -28; z <= 28; z += 7) {
-  // Estrutura transversal
-  beamBetween(
-    building,
-    [-29, 7.1, z],
-    [-29, 7.45, z],
-    0.25,
-    mats.green
-  );
+  const alturaEsquerda = 8.7;
+  const alturaDireita = 5.7;
 
-  beamBetween(
-    building,
-    [-29, 7.45, z],
-    [29, 7.1, z],
+  criarVigaEntre(
+    [-29, alturaEsquerda, z],
+    [29, alturaDireita, z],
     0.28,
-    mats.green
+    mats.verde
   );
 
-  beamBetween(
-    building,
-    [29, 7.1, z],
-    [29, 7.45, z],
-    0.25,
-    mats.green
+  criarVigaEntre(
+    [-29, alturaEsquerda, z],
+    [0, 8.0, z],
+    0.22,
+    mats.verde
   );
 
-  // Travessa inferior
-  beamBetween(
-    building,
-    [-29, 7.1, z],
-    [29, 7.1, z],
-    0.18,
-    mats.green
+  criarVigaEntre(
+    [0, 8.0, z],
+    [29, alturaDireita, z],
+    0.22,
+    mats.verde
   );
-
-  // Diagonais da treliça
-  for (let x = -24; x < 25; x += 8) {
-    beamBetween(
-      building,
-      [x, 7.1, z],
-      [x + 4, 7.42, z],
-      0.12,
-      mats.green
-    );
-
-    beamBetween(
-      building,
-      [x + 4, 7.42, z],
-      [x + 8, 7.1, z],
-      0.12,
-      mats.green
-    );
-  }
 
   // Luminária industrial
-  addBox(
-    building,
-    'Luminária industrial',
-    [5.5, 0.12, 0.35],
-    [0, 7.05, z],
-    mats.lamp,
-    { castShadow: false }
+  const luminaria = new THREE.Mesh(
+    new THREE.BoxGeometry(3.5, 0.12, 0.35),
+    mats.luz
   );
 
-  const light = new THREE.PointLight(
-    0xfff0d0,
-    1.1,
-    20
+  luminaria.position.set(0, 7.2, z);
+  galpao.add(luminaria);
+
+  const luz = new THREE.PointLight(
+    0xfff0d6,
+    65,
+    24
   );
 
-  light.position.set(0, 6.6, z);
-  building.add(light);
+  luz.position.set(0, 6.9, z);
+  galpao.add(luz);
 }
 
-// ---------------------------------------------------------
-// JANELAS ALTAS NO FUNDO
-// ---------------------------------------------------------
+// Vigas longitudinais do telhado
+criarCaixa(
+  'Viga longitudinal central',
+  [0.3, 0.3, 60],
+  [0, 8.05, 0],
+  mats.verde
+);
 
-for (let x = -25; x <= 25; x += 5) {
-  // Moldura metálica
-  addBox(
-    building,
-    'Moldura janela',
-    [4.2, 1.65, 0.16],
-    [x, 5.45, -31.48],
-    mats.darkSteel
+// ================================================
+// PARTE 3.8 — JANELAS ALTAS
+// ================================================
+
+for (let x = -24; x <= 24; x += 6) {
+  criarCaixa(
+    'Moldura metálica da janela',
+    [4.5, 1.8, 0.18],
+    [x, 6.5, -31.45],
+    mats.metal
   );
 
-  // Vidro
-  addBox(
-    building,
-    'Vidro janela',
-    [3.95, 1.4, 0.08],
-    [x, 5.45, -31.36],
-    mats.glass
+  criarCaixa(
+    'Vidro da janela',
+    [4.2, 1.55, 0.1],
+    [x, 6.5, -31.32],
+    mats.vidro
   );
 
-  // Travessa
-  addBox(
-    building,
-    'Travessa janela',
-    [4, 0.07, 0.08],
-    [x, 5.45, -31.28],
-    mats.steel
+  criarCaixa(
+    'Divisória vertical da janela',
+    [0.08, 1.7, 0.12],
+    [x, 6.5, -31.2],
+    mats.metal
   );
 }
 
-// ---------------------------------------------------------
-// PORTA LATERAL DE SAÍDA
-// ---------------------------------------------------------
+// ================================================
+// PARTE 3.9 — PORTÃO DE GARAGEM
+// ================================================
 
-addBox(
-  building,
-  'Porta lateral',
+// Portão lateral com réguas horizontais.
+// A estrutura fica na lateral direita do galpão.
+for (let i = 0; i < 10; i++) {
+  criarCaixa(
+    'Régua do portão industrial',
+    [0.12, 0.22, 8],
+    [29.45, 0.25 + i * 0.25, -20],
+    i % 2 === 0 ? mats.branco : mats.metal
+  );
+}
+
+criarCaixa(
+  'Coluna esquerda do portão',
+  [0.45, 4.2, 0.45],
+  [29.2, 2.1, -24.3],
+  mats.metal
+);
+
+criarCaixa(
+  'Coluna direita do portão',
+  [0.45, 4.2, 0.45],
+  [29.2, 2.1, -15.7],
+  mats.metal
+);
+
+// ================================================
+// PARTE 3.10 — PORTAS E SINALIZAÇÃO
+// ================================================
+
+// Porta dupla de vidro na parede do fundo
+criarCaixa(
+  'Moldura porta dupla',
+  [3.2, 3.2, 0.25],
+  [-20, 1.6, -31.3],
+  mats.metal
+);
+
+criarCaixa(
+  'Vidro porta dupla',
+  [2.9, 2.9, 0.12],
+  [-20, 1.6, -31.12],
+  mats.vidro
+);
+
+criarCaixa(
+  'Divisória da porta dupla',
+  [0.08, 2.9, 0.1],
+  [-20, 1.6, -31.0],
+  mats.metal
+);
+
+const placaFundo = criarPlaca('SAÍDA', 1.5, 0.45);
+placaFundo.position.set(-20, 3.6, -31.0);
+galpao.add(placaFundo);
+
+// Porta lateral de saída na parede esquerda
+criarCaixa(
+  'Moldura porta lateral',
+  [0.25, 2.5, 1.5],
+  [-29.4, 1.25, 10],
+  mats.metal
+);
+
+criarCaixa(
+  'Folha porta lateral',
   [0.12, 2.3, 1.25],
-  [-29.35, 1.15, 17],
-  mats.darkSteel
+  [-29.22, 1.25, 10],
+  mats.verde
 );
 
-addBox(
-  building,
-  'Vidro porta lateral',
-  [0.08, 1.9, 0.95],
-  [-29.27, 1.15, 17],
-  mats.glass
+const placaLateral = criarPlaca('SAÍDA', 1.4, 0.45);
+placaLateral.rotation.y = Math.PI / 2;
+placaLateral.position.set(-29.0, 2.8, 10);
+galpao.add(placaLateral);
+
+// Placa principal da oficina
+const placaOficina = criarPlaca(
+  'ÁREA DE MECATRÔNICA',
+  5,
+  0.8
 );
 
-addBox(
-  building,
-  'Placa saída',
-  [0.08, 0.28, 1.1],
-  [-29.25, 2.65, 17],
-  mats.green
-);
+placaOficina.position.set(0, 4.3, 31.45);
+galpao.add(placaOficina);
 
-const exitLabel = new THREE.Mesh(
-  new THREE.PlaneGeometry(0.95, 0.19),
-  makeLabel('SAÍDA', 256, 64, '#176744')
-);
+// ================================================
+// PARTE 3.11 — MARCAÇÕES DE SEGURANÇA
+// ================================================
 
-exitLabel.rotation.y = Math.PI / 2;
-exitLabel.position.set(-29.19, 2.65, 17);
-building.add(exitLabel);
-
-// ---------------------------------------------------------
-// FAIXAS AMARELAS DE CIRCULAÇÃO E SEGURANÇA
-// ---------------------------------------------------------
-
-function floorStripe(x, z, width, depth) {
-  addBox(
-    building,
-    'Faixa amarela de circulação',
-    [width, 0.025, depth],
-    [x, 0.005, z],
-    mats.yellow,
-    { castShadow: false }
+function criarFaixaSeguranca(x, z, largura, profundidade) {
+  const faixa = new THREE.Mesh(
+    new THREE.BoxGeometry(largura, 0.018, profundidade),
+    mats.amarelo
   );
+
+  faixa.position.set(x, 0.02, z);
+  faixa.receiveShadow = true;
+  galpao.add(faixa);
 }
 
-// Corredor central
-floorStripe(0, 5, 2.4, 49);
-
-// Delimitação das áreas de máquinas
-floorStripe(-17, -3, 0.14, 44);
-floorStripe(-3, -3, 0.14, 44);
-floorStripe(11, -3, 0.14, 44);
-floorStripe(24, -3, 0.14, 44);
-
-// Limites de áreas de trabalho
-floorStripe(-10, -25, 15, 0.14);
-floorStripe(10, -25, 15, 0.14);
-floorStripe(-10, 15, 15, 0.14);
-floorStripe(10, 15, 15, 0.14);
-
-// ---------------------------------------------------------
-// PLACA PRINCIPAL DA OFICINA
-// ---------------------------------------------------------
-
-const mainSign = new THREE.Mesh(
-  new THREE.PlaneGeometry(7, 1.25),
-  signMat
-);
-
-mainSign.position.set(0, 5.4, -30.95);
-building.add(mainSign);
-
-// Fim da Parte 3.2.
-// A Parte 3.3 adicionará as máquinas e os equipamentos.
-
-/* =========================================================
-   PARTE 3.3 — MÁQUINAS E EQUIPAMENTOS INDUSTRIAIS
-   Cole abaixo da Parte 3.2.
-   ========================================================= */
-
-// Lista de objetos que permitem interação
-const interactiveObjects = [];
-
-function registerInteractive(mesh, action, prompt) {
-  mesh.userData.action = action;
-  mesh.userData.prompt = prompt;
-
-  interactiveObjects.push(mesh);
-
-  return mesh;
-}
-
-// ---------------------------------------------------------
-// FURADEIRA DE BANCADA
-// ---------------------------------------------------------
-
-function createDrillPress(x, z, index) {
-  const g = new THREE.Group();
-
-  g.position.set(x, 0, z);
-  scene.add(g);
-
-  // Base e pedestal
-  addBox(
-    g, 'Base furadeira',
-    [1.5, 0.2, 1.5],
-    [0, 0.12, 0],
-    mats.blue
-  );
-
-  addBox(
-    g, 'Pedestal furadeira',
-    [1.1, 0.75, 1.1],
-    [0, 0.58, 0],
-    mats.blue
-  );
-
-  // Coluna vertical
-  addCylinder(
-    g, 'Coluna furadeira',
-    0.12, 0.12, 2.75,
-    [-0.38, 2.15, 0],
-    mats.steel
-  );
-
-  // Cabeçote e motor
-  addBox(
-    g, 'Cabeçote furadeira',
-    [1.35, 0.72, 0.95],
-    [0.05, 3.25, 0],
-    mats.blue
-  );
-
-  addCylinder(
-    g, 'Motor furadeira',
-    0.28, 0.28, 0.75,
-    [0.42, 3.82, 0],
-    mats.blueLight
-  );
-
-  // Mesa de trabalho
-  addBox(
-    g, 'Mesa furadeira',
-    [1.05, 0.13, 1.0],
-    [0.25, 1.65, 0],
-    mats.steel
-  );
-
-  // Mandril e broca
-  addCylinder(
-    g, 'Mandril',
-    0.12, 0.07, 0.42,
-    [0.12, 2.75, 0.05],
-    mats.darkSteel
-  );
-
-  addCylinder(
-    g, 'Broca',
-    0.025, 0.025, 0.38,
-    [0.12, 2.35, 0.05],
-    mats.steel,
-    12
-  );
-
-  // Alavanca móvel
-  const leverPivot = new THREE.Group();
-
-  leverPivot.position.set(0.57, 3.25, 0.35);
-  g.add(leverPivot);
-
-  const lever = addCylinder(
-    leverPivot, 'Alavanca furadeira',
-    0.035, 0.035, 0.65,
-    [0.25, -0.02, 0],
-    mats.darkSteel,
-    12
-  );
-
-  lever.rotation.z = Math.PI / 2.8;
-
-  const knob = addCylinder(
-    leverPivot, 'Manopla alavanca',
-    0.095, 0.095, 0.15,
-    [0.53, -0.03, 0],
-    mats.red,
-    16
-  );
-
-  knob.rotation.z = Math.PI / 2;
-
-  // Interação com a alavanca
-  registerInteractive(
-    knob,
-    () => {
-      leverPivot.rotation.z =
-        leverPivot.rotation.z === 0 ? -0.5 : 0;
-
-      showToast(
-        `Furadeira ${index}: alavanca acionada. ` +
-        'Mantenha as mãos afastadas da broca.'
-      );
-
-      if (state.mission === 1) {
-        completeMission();
-      }
-    },
-    'E / clique: acionar alavanca da furadeira'
-  );
-
-  // Proteção frontal transparente
-  addBox(
-    g, 'Proteção furadeira',
-    [0.8, 0.45, 0.05],
-    [0.12, 2.12, 0.42],
-    mats.glass
-  );
-
-  // Painel e botão
-  addBox(
-    g, 'Painel furadeira',
-    [0.25, 0.32, 0.12],
-    [0.52, 2.95, 0.52],
-    mats.darkSteel
-  );
-
-  const greenButton = addCylinder(
-    g, 'Botão verde furadeira',
-    0.07, 0.07, 0.08,
-    [0.52, 3.02, 0.6],
-    mats.green,
-    16
-  );
-
-  greenButton.rotation.x = Math.PI / 2;
-
-  // Identificação da máquina
-  const sign = new THREE.Mesh(
-    new THREE.PlaneGeometry(1.7, 0.36),
-    drillSignMat
-  );
-
-  sign.position.set(0, 4.15, -0.05);
-  g.add(sign);
-
-  return g;
-}
-
-// ---------------------------------------------------------
-// BANCADA DE MANUTENÇÃO
-// ---------------------------------------------------------
-
-function createWorkbench(x, z, index) {
-  const g = new THREE.Group();
-
-  g.position.set(x, 0, z);
-  scene.add(g);
-
-  // Tampo
-  addBox(
-    g, 'Estrutura bancada',
-    [3.5, 0.12, 1.45],
-    [0, 0.92, 0],
-    mats.wood
-  );
-
-  // Pés
-  for (const px of [-1.55, 1.55]) {
-    for (const pz of [-0.55, 0.55]) {
-      addBox(
-        g, 'Pé bancada',
-        [0.13, 0.9, 0.13],
-        [px, 0.45, pz],
-        mats.darkSteel
-      );
-    }
-  }
-
-  // Prateleira inferior
-  addBox(
-    g, 'Prateleira bancada',
-    [3.1, 0.1, 1.1],
-    [0, 0.38, 0],
-    mats.steel
-  );
-
-  // Gavetas e puxadores
-  for (let i = 0; i < 3; i++) {
-    addBox(
-      g, 'Gaveta bancada',
-      [0.85, 0.27, 0.08],
-      [-1.05 + i * 1.05, 0.65, 0.74],
-      mats.blue
-    );
-
-    addBox(
-      g, 'Puxador gaveta',
-      [0.22, 0.035, 0.035],
-      [-1.05 + i * 1.05, 0.66, 0.79],
-      mats.steel
-    );
-  }
-
-  // Tapete de trabalho
-  addBox(
-    g, 'Tapete de bancada',
-    [1.45, 0.025, 0.8],
-    [-0.85, 1.0, -0.12],
-    mats.rubber
-  );
-
-  // Ferramentas organizadas
-  for (let i = 0; i < 3; i++) {
-    const tool = addBox(
-      g, 'Ferramenta organizada',
-      [0.12, 0.045, 0.55],
-      [-1.3 + i * 0.42, 1.045, -0.12],
-      mats.yellow
-    );
-
-    tool.rotation.y = (i - 1) * 0.08;
-  }
-
-  // Morsa
-  addBox(
-    g, 'Morsa base',
-    [0.45, 0.12, 0.35],
-    [0.95, 1.08, 0.1],
-    mats.blue
-  );
-
-  addBox(
-    g, 'Morsa mordente',
-    [0.12, 0.22, 0.35],
-    [0.78, 1.2, 0.1],
-    mats.steel
-  );
-
-  addBox(
-    g, 'Morsa mordente móvel',
-    [0.12, 0.22, 0.35],
-    [1.12, 1.2, 0.1],
-    mats.steel
-  );
-
-  // Interação com a bancada
-  const top = g.children.find(
-    object => object.name === 'Estrutura bancada'
-  );
-
-  registerInteractive(
-    top,
-    () => {
-      showToast(
-        `Bancada ${index}: ferramentas conferidas e organizadas.`
-      );
-
-      if (state.mission === 2) {
-        completeMission();
-      }
-    },
-    'E / clique: conferir bancada'
-  );
-
-  // Placa de identificação
-  const label = new THREE.Mesh(
-    new THREE.PlaneGeometry(2.5, 0.38),
-    maintenanceSignMat
-  );
-
-  label.position.set(0, 1.65, 0.72);
-  g.add(label);
-
-  return g;
-}
-
-// ---------------------------------------------------------
-// CENTRO DE USINAGEM CNC
-// ---------------------------------------------------------
-
-function createCNC(x, z) {
-  const g = new THREE.Group();
-
-  g.position.set(x, 0, z);
-  scene.add(g);
-
-  // Base e corpo
-  addBox(
-    g, 'Base máquina CNC',
-    [3.1, 1.0, 2.0],
-    [0, 0.5, 0],
-    mats.blue
-  );
-
-  addBox(
-    g, 'Corpo máquina CNC',
-    [3.0, 2.25, 1.8],
-    [0, 2.1, 0],
-    mats.white
-  );
-
-  // Janela frontal
-  addBox(
-    g, 'Janela CNC moldura',
-    [2.1, 1.05, 0.12],
-    [0, 2.35, 0.94],
-    mats.darkSteel
-  );
-
-  addBox(
-    g, 'Janela CNC vidro',
-    [1.9, 0.85, 0.06],
-    [0, 2.35, 1.03],
-    mats.glass
-  );
-
-  // Braço e painel
-  addBox(
-    g, 'Painel CNC braço',
-    [0.12, 1.1, 0.12],
-    [1.85, 2.1, 0.35],
-    mats.darkSteel
-  );
-
-  addBox(
-    g, 'Tela CNC',
-    [0.55, 0.48, 0.08],
-    [1.88, 2.38, 0.43],
-    mats.blueLight
-  );
-
-  // Botões do painel
-  for (let i = 0; i < 3; i++) {
-    const button = addCylinder(
-      g, 'Botão CNC',
-      0.07, 0.07, 0.08,
-      [1.88 + (i - 1) * 0.19, 1.95, 0.45],
-      i === 0 ? mats.green : mats.red,
-      16
-    );
-
-    button.rotation.x = Math.PI / 2;
-  }
-
-  // Placa da máquina
-  const sign = new THREE.Mesh(
-    new THREE.PlaneGeometry(2.1, 0.38),
-    makeLabel(
-      'CENTRO DE USINAGEM CNC',
-      512,
-      128,
-      '#174c79'
-    )
-  );
-
-  sign.position.set(0, 3.5, 0.93);
-  g.add(sign);
-}
-
-// ---------------------------------------------------------
-// ARMÁRIO DE SEGURANÇA E EPIs
-// ---------------------------------------------------------
-
-function createSafetyCabinet(x, z) {
-  const g = new THREE.Group();
-
-  g.position.set(x, 0, z);
-  scene.add(g);
-
-  addBox(
-    g, 'Armário segurança corpo',
-    [1.6, 2.4, 0.7],
-    [0, 1.2, 0],
-    mats.red
-  );
-
-  const door = addBox(
-    g, 'Armário segurança porta',
-    [1.42, 2.16, 0.08],
-    [0, 1.22, 0.39],
-    mats.red
-  );
-
-  addBox(
-    g, 'Armário segurança puxador',
-    [0.07, 0.35, 0.08],
-    [0.52, 1.2, 0.46],
-    mats.steel
-  );
-
-  const sign = new THREE.Mesh(
-    new THREE.PlaneGeometry(1.3, 0.35),
-    safetySignMat
-  );
-
-  sign.position.set(0, 2.1, 0.45);
-  g.add(sign);
-
-  // Interação com o armário
-  registerInteractive(
-    door,
-    () => {
-      showToast(
-        'Segurança: verifique os EPIs antes de iniciar qualquer operação.'
-      );
-
-      if (state.mission === 0) {
-        completeMission();
-      }
-    },
-    'E / clique: verificar armário de segurança'
-  );
-}
-
-// ---------------------------------------------------------
-// ESTANTES DE COMPONENTES
-// ---------------------------------------------------------
-
-function createShelf(x, z) {
-  const g = new THREE.Group();
-
-  g.position.set(x, 0, z);
-  scene.add(g);
-
-  // Prateleiras e montantes
-  for (const y of [0.65, 1.55, 2.45]) {
-    addBox(
-      g, 'Prateleira industrial',
-      [3.8, 0.12, 0.75],
-      [0, y, 0],
-      mats.steel
-    );
-
-    for (const px of [-1.75, 1.75]) {
-      addBox(
-        g, 'Montante estante',
-        [0.1, 2.8, 0.1],
-        [px, 1.4, 0],
-        mats.blue
-      );
-    }
-  }
-
-  // Caixas de componentes
-  const colors = [
-    mats.yellow,
-    mats.blue,
-    mats.red,
-    mats.white,
-    mats.green
-  ];
-
-  for (let i = 0; i < 5; i++) {
-    addBox(
-      g, 'Caixa de componentes',
-      [0.48, 0.42, 0.5],
-      [-1.45 + i * 0.72, 0.94, 0],
-      colors[i]
-    );
-
-    addBox(
-      g, 'Caixa de componentes',
-      [0.48, 0.42, 0.5],
-      [-1.45 + i * 0.72, 1.84, 0],
-      colors[(i + 2) % colors.length]
-    );
-  }
-}
-
-// ---------------------------------------------------------
-// CARRINHO DE FERRAMENTAS
-// ---------------------------------------------------------
-
-function createToolCart(x, z) {
-  const g = new THREE.Group();
-
-  g.position.set(x, 0, z);
-  scene.add(g);
-
-  addBox(
-    g, 'Carrinho ferramentas bandeja',
-    [1.2, 0.12, 0.7],
-    [0, 0.8, 0],
-    mats.red
-  );
-
-  // Pernas e rodas
-  for (const px of [-0.48, 0.48]) {
-    for (const pz of [-0.25, 0.25]) {
-      addBox(
-        g, 'Perna carrinho',
-        [0.07, 0.75, 0.07],
-        [px, 0.4, pz],
-        mats.darkSteel
-      );
-
-      const wheel = addCylinder(
-        g, 'Roda carrinho',
-        0.13, 0.13, 0.08,
-        [px, 0.13, pz],
-        mats.rubber,
-        16
-      );
-
-      wheel.rotation.z = Math.PI / 2;
-    }
-  }
-
-  // Ferramentas sobre a bandeja
-  for (let i = 0; i < 4; i++) {
-    addBox(
-      g, 'Ferramenta carrinho',
-      [0.12, 0.04, 0.32],
-      [-0.35 + i * 0.22, 0.9, 0],
-      mats.yellow
-    );
-  }
-}
-
-// ---------------------------------------------------------
-// POSICIONAMENTO DOS EQUIPAMENTOS NA OFICINA
-// ---------------------------------------------------------
-
-// Armário de segurança
-createSafetyCabinet(-23, 19);
-
-// Fileira de furadeiras de bancada
-createDrillPress(-20, -16, 1);
-createDrillPress(-14, -16, 2);
-createDrillPress(-8, -16, 3);
-createDrillPress(-2, -16, 4);
-
-// Centros de usinagem CNC
-createCNC(11, -17);
-createCNC(20, -17);
-
-// Bancadas de manutenção
-createWorkbench(-20, -5, 1);
-createWorkbench(-11, -5, 2);
-createWorkbench(1, -4, 3);
-createWorkbench(10, 0, 4);
-createWorkbench(20, 2, 5);
-
-// Estantes de componentes
-createShelf(-23, -27);
-createShelf(23, -27);
-
-// Carrinhos de ferramentas
-createToolCart(-4, 7);
-createToolCart(14, 9);
-
-// ---------------------------------------------------------
-// PAINEL FÍSICO DE EPIs
-// ---------------------------------------------------------
-
-addBox(
-  scene,
-  'Painel EPI suporte',
-  [2.4, 1.7, 0.18],
-  [-23, 3.4, 18.5],
-  mats.white
-);
-
-// Capacetes de treinamento
-for (let i = 0; i < 3; i++) {
-  addBox(
-    scene,
-    'Capacete EPI',
-    [0.42, 0.2, 0.38],
-    [-23.65 + i * 0.65, 4.05, 18.35],
-    i === 1 ? mats.yellow : mats.blue
-  );
-}
-
-// Identificação do painel
-const epiText = new THREE.Mesh(
-  new THREE.PlaneGeometry(2.1, 0.4),
-  makeLabel(
-    'CAPACETES • ÓCULOS • LUVAS',
-    512,
-    128,
-    '#a32222'
-  )
-);
-
-epiText.position.set(-23, 3.9, 18.38);
-scene.add(epiText);
-
-// Fim da Parte 3.3.
-// A Parte 3.4 adicionará missões, interações,
-// controles do jogador, movimento e animação.
-
-/* =========================================================
-   PARTE 3.4 — MISSÕES, CONTROLES, MOVIMENTO E VR
-   Cole abaixo da Parte 3.3.
-   ========================================================= */
-
-// ---------------------------------------------------------
-// SISTEMA DE MISSÕES E PONTUAÇÃO
-// ---------------------------------------------------------
-
-const state = {
-  mission: 0,
-  score: 0,
-  completed: false
+criarFaixaSeguranca(-10, 0, 0.12, 35);
+criarFaixaSeguranca(-10, -17, 10, 0.12);
+criarFaixaSeguranca(10, 0, 0.12, 35);
+criarFaixaSeguranca(10, -17, 10, 0.12);
+
+// ================================================
+// PARTE 3.12 — CONTROLES DO JOGADOR
+// ================================================
+
+const relogio = new THREE.Clock();
+
+const teclas = {
+  frente: false,
+  tras: false,
+  esquerda: false,
+  direita: false,
+  correr: false
 };
 
-const missions = [
-  {
-    title: 'Missão 1 — Segurança',
-    desc: 'Encontre o armário vermelho e confira os procedimentos de segurança.'
-  },
-  {
-    title: 'Missão 2 — Operação',
-    desc: 'Localize uma furadeira de bancada e acione a alavanca de treinamento.'
-  },
-  {
-    title: 'Missão 3 — Organização',
-    desc: 'Confira a bancada de manutenção e as ferramentas organizadas.'
-  }
-];
+const velocidade = 5;
+const velocidadeCorrida = 8;
 
-// Elementos da interface HTML
-const titleEl = document.getElementById('mission-title');
-const descEl = document.getElementById('mission-desc');
-const scoreEl = document.getElementById('score');
-const countEl = document.getElementById('mission-count');
-const progressEl = document.getElementById('progress-bar');
-const toastEl = document.getElementById('toast');
+const direcao = new THREE.Vector3();
+const movimento = new THREE.Vector3();
 
-let toastTimer;
+let jogadorAtivo = false;
 
-function showToast(message) {
-  toastEl.textContent = message;
-  toastEl.classList.add('show');
+// Botão de início opcional
+const botaoInicio = document.getElementById('start-btn');
 
-  clearTimeout(toastTimer);
+if (botaoInicio) {
+  botaoInicio.addEventListener('click', () => {
+    const instrucoes = document.getElementById('instructions');
 
-  toastTimer = setTimeout(() => {
-    toastEl.classList.remove('show');
-  }, 2600);
+    if (instrucoes) {
+      instrucoes.style.display = 'none';
+    }
+
+    controls.lock();
+  });
 }
 
-function updateMissionUI() {
-  if (state.completed) {
-    titleEl.textContent = 'Treinamento concluído!';
+controls.addEventListener('lock', () => {
+  jogadorAtivo = true;
+});
 
-    descEl.textContent =
-      'Você concluiu as três etapas. Revise os procedimentos ' +
-      'antes de operar máquinas reais.';
+controls.addEventListener('unlock', () => {
+  jogadorAtivo = false;
+});
 
-    countEl.textContent = '3 de 3 concluídas';
-    progressEl.style.width = '100%';
+document.addEventListener('keydown', (evento) => {
+  switch (evento.code) {
+    case 'KeyW':
+    case 'ArrowUp':
+      teclas.frente = true;
+      break;
 
-    return;
+    case 'KeyS':
+    case 'ArrowDown':
+      teclas.tras = true;
+      break;
+
+    case 'KeyA':
+    case 'ArrowLeft':
+      teclas.esquerda = true;
+      break;
+
+    case 'KeyD':
+    case 'ArrowRight':
+      teclas.direita = true;
+      break;
+
+    case 'ShiftLeft':
+    case 'ShiftRight':
+      teclas.correr = true;
+      break;
   }
+});
 
-  titleEl.textContent = missions[state.mission].title;
-  descEl.textContent = missions[state.mission].desc;
+document.addEventListener('keyup', (evento) => {
+  switch (evento.code) {
+    case 'KeyW':
+    case 'ArrowUp':
+      teclas.frente = false;
+      break;
 
-  countEl.textContent =
-    `Missão ${state.mission + 1} de ${missions.length}`;
+    case 'KeyS':
+    case 'ArrowDown':
+      teclas.tras = false;
+      break;
 
-  progressEl.style.width =
-    `${(state.mission / missions.length) * 100}%`;
+    case 'KeyA':
+    case 'ArrowLeft':
+      teclas.esquerda = false;
+      break;
+
+    case 'KeyD':
+    case 'ArrowRight':
+      teclas.direita = false;
+      break;
+
+    case 'ShiftLeft':
+    case 'ShiftRight':
+      teclas.correr = false;
+      break;
+  }
+});
+
+// ================================================
+// PARTE 3.13 — CONTROLES DE CELULAR
+// ================================================
+
+const controlesMobile = document.createElement('div');
+
+controlesMobile.id = 'controles-mobile';
+
+Object.assign(controlesMobile.style, {
+  position: 'fixed',
+  left: '16px',
+  bottom: '20px',
+  zIndex: '1000',
+  display: 'grid',
+  gridTemplateColumns: 'repeat(3, 58px)',
+  gridTemplateRows: 'repeat(2, 58px)',
+  gap: '6px',
+  touchAction: 'none'
+});
+
+function criarBotaoMobile(texto, propriedade, coluna, linha) {
+  const botao = document.createElement('button');
+
+  botao.textContent = texto;
+
+  Object.assign(botao.style, {
+    gridColumn: String(coluna),
+    gridRow: String(linha),
+    fontSize: '22px',
+    color: '#ffffff',
+    background: 'rgba(20, 55, 75, 0.88)',
+    border: '1px solid #ffffff',
+    borderRadius: '12px',
+    touchAction: 'none',
+    userSelect: 'none'
+  });
+
+  const ativar = (evento) => {
+    evento.preventDefault();
+    teclas[propriedade] = true;
+
+    if (botao.setPointerCapture && evento.pointerId !== undefined) {
+      try {
+        botao.setPointerCapture(evento.pointerId);
+      } catch {
+        // Alguns navegadores não permitem capturar o ponteiro.
+      }
+    }
+  };
+
+  const desativar = (evento) => {
+    evento.preventDefault();
+    teclas[propriedade] = false;
+  };
+
+  botao.addEventListener('pointerdown', ativar);
+  botao.addEventListener('pointerup', desativar);
+  botao.addEventListener('pointercancel', desativar);
+  botao.addEventListener('lostpointercapture', () => {
+    teclas[propriedade] = false;
+  });
+
+  controlesMobile.appendChild(botao);
 }
 
-function completeMission() {
-  // Evita pontuação depois de concluir o treinamento
-  if (state.completed) return;
+criarBotaoMobile('↑', 'frente', 2, 1);
+criarBotaoMobile('←', 'esquerda', 1, 2);
+criarBotaoMobile('↓', 'tras', 2, 2);
+criarBotaoMobile('→', 'direita', 3, 2);
 
-  state.score += 100;
-  scoreEl.textContent = state.score;
+document.body.appendChild(controlesMobile);
 
-  state.mission++;
+// Mostrar os botões apenas em dispositivos com toque
+function atualizarInterfaceMobile() {
+  const dispositivoTouch =
+    window.matchMedia('(pointer: coarse)').matches ||
+    navigator.maxTouchPoints > 0;
 
-  if (state.mission >= missions.length) {
-    state.completed = true;
-
-    showToast(
-      'Excelente! Treinamento concluído: +100 XP.'
-    );
-  } else {
-    showToast(
-      `Missão concluída! +100 XP. Próxima etapa: ` +
-      `${missions[state.mission].title}.`
-    );
-  }
-
-  updateMissionUI();
+  controlesMobile.style.display =
+    dispositivoTouch ? 'grid' : 'none';
 }
 
-// Mostrar a primeira missão
-updateMissionUI();
+atualizarInterfaceMobile();
+window.addEventListener('resize', atualizarInterfaceMobile);
 
-// ---------------------------------------------------------
-// SISTEMA DE INTERAÇÃO COM EQUIPAMENTOS
-// ---------------------------------------------------------
+// ================================================
+// PARTE 3.14 — INTERAÇÃO COM AS MÁQUINAS
+// ================================================
 
 const raycaster = new THREE.Raycaster();
-const center = new THREE.Vector2(0, 0);
-const tempMatrix = new THREE.Matrix4();
+const centroTela = new THREE.Vector2(0, 0);
 
-// Procura um objeto interativo no objeto atingido
-// ou em algum dos seus objetos pais.
-function findInteractiveParent(object) {
-  let node = object;
+const mensagemInteracao =
+  document.getElementById('mensagem-maquinas');
 
-  while (node) {
+function mostrarMensagem(texto) {
+  if (mensagemInteracao) {
+    mensagemInteracao.textContent = texto;
+  }
+
+  console.log(texto);
+}
+
+function selecionarObjeto() {
+  raycaster.setFromCamera(centroTela, camera);
+
+  const objetos = [];
+
+  scene.traverse((objeto) => {
     if (
-      node.userData &&
-      typeof node.userData.action === 'function'
+      objeto.isMesh &&
+      objeto.visible &&
+      objeto.name !== 'Piso de concreto'
     ) {
-      return node;
-    }
-
-    node = node.parent;
-  }
-
-  return null;
-}
-
-// Interação pela mira central da câmera
-function interactFromCamera() {
-  raycaster.setFromCamera(center, camera);
-
-  const hits = raycaster.intersectObjects(
-    scene.children,
-    true
-  );
-
-  for (const hit of hits) {
-    const target = findInteractiveParent(hit.object);
-
-    if (target) {
-      target.userData.action();
-      return;
-    }
-  }
-
-  showToast(
-    'Aponte para o armário, a alavanca da furadeira ' +
-    'ou uma bancada.'
-  );
-}
-
-// Interação com o controle VR
-function interactFromController(controller) {
-  tempMatrix.identity().extractRotation(
-    controller.matrixWorld
-  );
-
-  raycaster.ray.origin.setFromMatrixPosition(
-    controller.matrixWorld
-  );
-
-  raycaster.ray.direction
-    .set(0, 0, -1)
-    .applyMatrix4(tempMatrix);
-
-  const hits = raycaster.intersectObjects(
-    scene.children,
-    true
-  );
-
-  for (const hit of hits) {
-    const target = findInteractiveParent(hit.object);
-
-    if (target) {
-      target.userData.action();
-      return;
-    }
-  }
-
-  showToast(
-    'Aponte o controle para um equipamento interativo.'
-  );
-}
-
-// ---------------------------------------------------------
-// CONTROLES E EVENTOS DO VR
-// ---------------------------------------------------------
-
-// Ao entrar em VR, esconde a tela inicial
-renderer.xr.addEventListener('sessionstart', () => {
-  document.getElementById('start-overlay').style.display =
-    'none';
-
-  showToast(
-    'VR ativo: use o gatilho do controle para interagir.'
-  );
-});
-
-// Controle VR esquerdo
-const controller0 = renderer.xr.getController(0);
-
-controller0.addEventListener('select', () => {
-  interactFromController(controller0);
-});
-
-scene.add(controller0);
-
-const controllerGrip0 = renderer.xr.getControllerGrip(0);
-scene.add(controllerGrip0);
-
-// Controle VR direito
-const controller1 = renderer.xr.getController(1);
-
-controller1.addEventListener('select', () => {
-  interactFromController(controller1);
-});
-
-scene.add(controller1);
-
-const controllerGrip1 = renderer.xr.getControllerGrip(1);
-scene.add(controllerGrip1);
-
-// ---------------------------------------------------------
-// TECLADO DO COMPUTADOR
-// ---------------------------------------------------------
-
-const keys = {
-  forward: false,
-  backward: false,
-  left: false,
-  right: false
-};
-
-const keyMap = {
-  KeyW: 'forward',
-  ArrowUp: 'forward',
-
-  KeyS: 'backward',
-  ArrowDown: 'backward',
-
-  KeyA: 'left',
-  ArrowLeft: 'left',
-
-  KeyD: 'right',
-  ArrowRight: 'right'
-};
-
-// Captura as teclas de movimento
-document.addEventListener('keydown', event => {
-  if (keyMap[event.code]) {
-    keys[keyMap[event.code]] = true;
-    event.preventDefault();
-  }
-
-  if (
-    ['ArrowUp', 'ArrowDown', 'ArrowLeft',
-     'ArrowRight', 'Space'].includes(event.code)
-  ) {
-    event.preventDefault();
-  }
-
-  // E interage com equipamentos
-  if (
-    event.code === 'KeyE' &&
-    !renderer.xr.isPresenting
-  ) {
-    interactFromCamera();
-  }
-});
-
-// Solta as teclas quando o jogador para de pressioná-las
-document.addEventListener('keyup', event => {
-  if (keyMap[event.code]) {
-    keys[keyMap[event.code]] = false;
-  }
-});
-
-// Evita que uma tecla fique pressionada se a janela perder foco
-window.addEventListener('blur', () => {
-  Object.keys(keys).forEach(key => {
-    keys[key] = false;
-  });
-});
-
-// Clique esquerdo para interagir quando o mouse está capturado
-document.addEventListener('mousedown', event => {
-  if (
-    event.button === 0 &&
-    controls.isLocked &&
-    !renderer.xr.isPresenting
-  ) {
-    interactFromCamera();
-  }
-});
-
-// ---------------------------------------------------------
-// TELA INICIAL E CONTROLE DO MOUSE
-// ---------------------------------------------------------
-
-const startOverlay = document.getElementById('start-overlay');
-const startButton = document.getElementById('start-btn');
-
-startButton.addEventListener('click', () => {
-  startOverlay.style.display = 'none';
-
-  if (window.matchMedia('(pointer:fine)').matches) {
-    controls.lock();
-  } else {
-    showToast(
-      'Use os botões de direção e toque em INTERAGIR.'
-    );
-  }
-});
-
-// Ao liberar o mouse no computador, mostra a tela inicial
-controls.addEventListener('unlock', () => {
-  if (
-    !renderer.xr.isPresenting &&
-    window.matchMedia('(pointer:fine)').matches
-  ) {
-    startOverlay.style.display = 'grid';
-  }
-});
-
-// Ao sair do VR, mantém a experiência acessível
-if (renderer.xr) {
-  renderer.xr.addEventListener('sessionend', () => {
-    if (
-      !window.matchMedia('(pointer:fine)').matches
-    ) {
-      startOverlay.style.display = 'none';
+      objetos.push(objeto);
     }
   });
-}
 
-// ---------------------------------------------------------
-// CONTROLES DE MOVIMENTO PARA CELULAR
-// ---------------------------------------------------------
+  const intersecoes = raycaster.intersectObjects(objetos, false);
 
-// Os botões precisam ter data-move no HTML:
-// data-move="forward"
-// data-move="backward"
-// data-move="left"
-// data-move="right"
-
-document.querySelectorAll('[data-move]').forEach(button => {
-  const key = button.dataset.move;
-
-  const down = event => {
-    event.preventDefault();
-    keys[key] = true;
-  };
-
-  const up = event => {
-    event.preventDefault();
-    keys[key] = false;
-  };
-
-  button.addEventListener('pointerdown', down);
-  button.addEventListener('pointerup', up);
-  button.addEventListener('pointercancel', up);
-  button.addEventListener('pointerleave', up);
-});
-
-// Botão de interação do celular
-document.getElementById('interact-btn')
-  .addEventListener('click', () => {
-    interactFromCamera();
-  });
-
-// ---------------------------------------------------------
-// OLHAR AO ARRASTAR O DEDO NO CELULAR
-// ---------------------------------------------------------
-
-let touchLook = null;
-
-renderer.domElement.addEventListener(
-  'pointerdown',
-  event => {
-    if (
-      event.pointerType !== 'touch' ||
-      event.target.closest('#mobile-controls')
-    ) {
-      return;
-    }
-
-    touchLook = {
-      id: event.pointerId,
-      x: event.clientX,
-      y: event.clientY
-    };
-  }
-);
-
-renderer.domElement.addEventListener(
-  'pointermove',
-  event => {
-    if (
-      !touchLook ||
-      touchLook.id !== event.pointerId ||
-      renderer.xr.isPresenting
-    ) {
-      return;
-    }
-
-    const dx = event.clientX - touchLook.x;
-    const dy = event.clientY - touchLook.y;
-
-    camera.rotation.order = 'YXZ';
-
-    camera.rotation.y -= dx * 0.004;
-    camera.rotation.x -= dy * 0.003;
-
-    // Limita o ângulo vertical da câmera
-    camera.rotation.x = THREE.MathUtils.clamp(
-      camera.rotation.x,
-      -1.35,
-      1.35
-    );
-
-    touchLook.x = event.clientX;
-    touchLook.y = event.clientY;
-  }
-);
-
-renderer.domElement.addEventListener(
-  'pointerup',
-  event => {
-    if (touchLook?.id === event.pointerId) {
-      touchLook = null;
-    }
-  }
-);
-
-renderer.domElement.addEventListener(
-  'pointercancel',
-  () => {
-    touchLook = null;
-  }
-);
-
-// ---------------------------------------------------------
-// MOVIMENTO DO JOGADOR
-// ---------------------------------------------------------
-
-const clock = new THREE.Clock();
-
-const forward = new THREE.Vector3();
-const right = new THREE.Vector3();
-const move = new THREE.Vector3();
-
-// Limites internos do galpão
-const WORLD_LIMIT_X = 27.2;
-const WORLD_LIMIT_Z = 29.2;
-
-// Velocidade em unidades por segundo
-const PLAYER_SPEED = 5.2;
-
-function updateMovement(delta) {
-  // O movimento convencional do teclado fica desativado
-  // durante o VR para evitar conflito com a posição do headset.
-  if (renderer.xr.isPresenting) return;
-
-  if (
-    !controls.isLocked &&
-    !keys.forward &&
-    !keys.backward &&
-    !keys.left &&
-    !keys.right
-  ) {
+  if (intersecoes.length === 0) {
+    mostrarMensagem('Nenhum objeto selecionado.');
     return;
   }
 
-  // Direção horizontal para a qual a câmera está olhando
-  camera.getWorldDirection(forward);
+  let objeto = intersecoes[0].object;
 
-  forward.y = 0;
+  // Procurar a máquina ancestral, se houver.
+  let atual = objeto;
 
-  if (forward.lengthSq() < 0.0001) {
-    forward.set(0, 0, -1);
+  while (atual && atual !== scene) {
+    if (atual.userData && atual.userData.nome) {
+      mostrarMensagem(
+        'Máquina selecionada: ' + atual.userData.nome
+      );
+      return;
+    }
+
+    atual = atual.parent;
   }
 
-  forward.normalize();
-
-  // Direção lateral correta:
-  // olhando para -Z, direita corresponde a +X.
-  right.crossVectors(forward, camera.up).normalize();
-
-  // Monta o vetor de movimento
-  move.set(0, 0, 0);
-
-  if (keys.forward) {
-    move.add(forward);
-  }
-
-  if (keys.backward) {
-    move.sub(forward);
-  }
-
-  if (keys.right) {
-    move.add(right);
-  }
-
-  if (keys.left) {
-    move.sub(right);
-  }
-
-  // Normalização evita andar mais rápido na diagonal
-  if (move.lengthSq() > 0) {
-    move.normalize().multiplyScalar(
-      PLAYER_SPEED * delta
-    );
-
-    camera.position.x = THREE.MathUtils.clamp(
-      camera.position.x + move.x,
-      -WORLD_LIMIT_X,
-      WORLD_LIMIT_X
-    );
-
-    camera.position.z = THREE.MathUtils.clamp(
-      camera.position.z + move.z,
-      -WORLD_LIMIT_Z,
-      WORLD_LIMIT_Z
-    );
-
-    // Altura aproximada dos olhos do jogador
-    camera.position.y = 1.68;
-  }
+  mostrarMensagem('Objeto: ' + (objeto.name || 'objeto industrial'));
 }
 
-// ---------------------------------------------------------
-// LOOP PRINCIPAL DA EXPERIÊNCIA 3D
-// ---------------------------------------------------------
+document.addEventListener('mousedown', (evento) => {
+  if (
+    evento.button === 0 &&
+    !renderer.xr.isPresenting &&
+    controls.isLocked
+  ) {
+    selecionarObjeto();
+  }
+});
+
+// ================================================
+// PARTE 3.15 — MODO VR
+// ================================================
+
+// Controles do headset: os controladores são adicionados
+// à cena para permitir interação por apontamento no futuro.
+const controladorEsquerdo = renderer.xr.getController(0);
+const controladorDireito = renderer.xr.getController(1);
+
+scene.add(controladorEsquerdo);
+scene.add(controladorDireito);
+
+// ================================================
+// PARTE 3.16 — LIMITES DO GALPÃO
+// ================================================
+
+function limitarJogador() {
+  camera.position.x = THREE.MathUtils.clamp(
+    camera.position.x,
+    -27.5,
+    27.5
+  );
+
+  camera.position.z = THREE.MathUtils.clamp(
+    camera.position.z,
+    -29.5,
+    29.5
+  );
+
+  camera.position.y = 1.68;
+}
+
+// ================================================
+// PARTE 3.17 — LOOP PRINCIPAL
+// ================================================
 
 renderer.setAnimationLoop(() => {
-  const delta = Math.min(clock.getDelta(), 0.05);
+  const delta = Math.min(relogio.getDelta(), 0.05);
 
-  updateMovement(delta);
+  if (!renderer.xr.isPresenting && controls.isLocked) {
+    direcao.set(
+      Number(teclas.direita) - Number(teclas.esquerda),
+      0,
+      Number(teclas.tras) - Number(teclas.frente)
+    );
+
+    if (direcao.lengthSq() > 0) {
+      direcao.normalize();
+
+      const velocidadeAtual = teclas.correr
+        ? velocidadeCorrida
+        : velocidade;
+
+      movimento.copy(direcao)
+        .multiplyScalar(velocidadeAtual * delta);
+
+      controls.moveRight(movimento.x);
+      controls.moveForward(-movimento.z);
+
+      limitarJogador();
+    }
+  }
+
+  // Atualização das máquinas, caso a classe implemente animações.
+  if (maquinas && typeof maquinas.atualizar === 'function') {
+    maquinas.atualizar(delta);
+  }
 
   renderer.render(scene, camera);
 });
 
-// ---------------------------------------------------------
-// AJUSTE AUTOMÁTICO AO REDIMENSIONAR A JANELA
-// ---------------------------------------------------------
+// ================================================
+// PARTE 3.18 — REDIMENSIONAMENTO DA TELA
+// ================================================
 
 window.addEventListener('resize', () => {
-  camera.aspect =
-    window.innerWidth / window.innerHeight;
-
+  camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
 
   renderer.setSize(
@@ -1914,4 +1062,5 @@ window.addEventListener('resize', () => {
   );
 });
 
-// FIM DO ARQUIVO main.js
+console.log('Oficina industrial SENAI inicializada.');
+console.log('Máquinas carregadas:', maquinas.maquinas.length);
