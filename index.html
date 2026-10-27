@@ -2,229 +2,78 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <meta name="theme-color" content="#101820">
-    <meta name="description"
-          content="Oficina VR SENAI - ambiente 3D interativo para treinamento profissional industrial.">
+  <title>Oficina VR SENAI</title>
 
-    <title>Oficina VR SENAI | Treinamento Industrial</title>
+  <meta
+    name="description"
+    content="Simulador industrial 3D para treinamento profissional SENAI."
+  >
 
-    <link rel="stylesheet" href="./style.css">
+  <link rel="stylesheet" href="./style.css">
 
-    <!-- Import Map para carregar o Three.js -->
-    <script type="importmap">
-    {
-        "imports": {
-            "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
-            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
-        }
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
     }
-    </script>
+  }
+  </script>
 </head>
 
 <body>
-    <!-- Tela de carregamento -->
-    <div id="loading-screen">
-        <div class="loading-card">
-            <div class="loading-icon">⚙</div>
-            <h1>OFICINA VR</h1>
-            <p>Preparando o ambiente industrial...</p>
-            <div class="loading-bar">
-                <div id="loading-progress"></div>
-            </div>
-            <span id="loading-status">Inicializando...</span>
+  <div id="loading">
+    <div class="loading-card">
+      <div class="loading-spinner"></div>
+      <h1>OFICINA VR SENAI</h1>
+      <p id="loading-message">Preparando o ambiente industrial...</p>
+    </div>
+  </div>
+
+  <div id="game">
+    <header id="topbar">
+      <div class="brand">
+        <strong>OFICINA VR</strong>
+        <span>SENAI · TREINAMENTO INDUSTRIAL</span>
+      </div>
+
+      <div id="status">Inicializando...</div>
+    </header>
+
+    <div id="crosshair">+</div>
+
+    <section id="help-panel">
+      <strong>CONTROLES</strong>
+      <p><kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> Movimentar</p>
+      <p><kbd>↑</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>→</kbd> Alternativa</p>
+      <p>Mouse: olhar ao redor</p>
+      <p>Toque/clique: selecionar máquina</p>
+    </section>
+
+    <div id="message" role="status" aria-live="polite"></div>
+
+    <div id="mobile-controls">
+      <div class="movement-pad">
+        <button data-move="forward" aria-label="Avançar">▲</button>
+        <div class="movement-row">
+          <button data-move="left" aria-label="Mover para esquerda">◀</button>
+          <button data-move="backward" aria-label="Recuar">▼</button>
+          <button data-move="right" aria-label="Mover para direita">▶</button>
         </div>
+      </div>
+
+      <button id="look-button" type="button">OLHAR / TOCAR</button>
     </div>
 
-    <!-- Interface principal -->
-    <div id="interface">
+    <footer id="bottombar">
+      <span>SIMULADOR 3D</span>
+      <span id="selected-object">Nenhuma máquina selecionada</span>
+    </footer>
+  </div>
 
-        <!-- Cabeçalho -->
-        <header class="topbar">
-            <div class="brand">
-                <div class="brand-icon">⚙</div>
-                <div>
-                    <h1>OFICINA <span>VR</span></h1>
-                    <p>SIMULADOR DE TREINAMENTO INDUSTRIAL</p>
-                </div>
-            </div>
-
-            <div class="topbar-actions">
-                <span id="connection-status" class="status-badge">
-                    <span class="status-dot"></span>
-                    Inicializando
-                </span>
-
-                <button id="btn-help" class="icon-button"
-                        type="button" title="Ajuda">
-                    ?
-                </button>
-            </div>
-        </header>
-
-        <!-- Área de simulação -->
-        <main id="simulation">
-            <div id="scene-container"></div>
-
-            <!-- Informações dentro da simulação -->
-            <div class="scene-heading">
-                <span class="eyebrow">CENTRO DE TREINAMENTO</span>
-                <h2>Ambiente Industrial 3D</h2>
-                <p>Explore os equipamentos e pratique procedimentos.</p>
-            </div>
-
-            <!-- Mensagens de interação -->
-            <div id="mensagem-maquinas" class="message-panel" role="status"
-                 aria-live="polite">
-                Carregando equipamentos...
-            </div>
-
-            <!-- Controles rápidos -->
-            <div class="quick-controls">
-                <button id="btn-reset-camera" type="button">
-                    ⟳ <span>Recentrar câmera</span>
-                </button>
-
-                <button id="btn-vr" type="button">
-                    ◉ <span>Entrar em VR</span>
-                </button>
-            </div>
-
-            <!-- Ajuda -->
-            <aside id="help-panel" class="floating-panel hidden">
-                <button id="btn-close-help" class="close-button"
-                        type="button" aria-label="Fechar ajuda">×</button>
-
-                <h3>Como utilizar</h3>
-                <ul>
-                    <li><strong>Computador:</strong> utilize o mouse para observar a oficina.</li>
-                    <li><strong>Celular:</strong> toque na tela para interagir, conforme os controles implementados.</li>
-                    <li><strong>VR:</strong> use o botão de VR quando o navegador e o dispositivo forem compatíveis.</li>
-                    <li><strong>Equipamentos:</strong> selecione uma máquina para consultar suas opções.</li>
-                </ul>
-
-                <p class="warning-text">
-                    Esta oficina é um simulador didático. Não substitui treinamento
-                    presencial nem os procedimentos reais de segurança.
-                </p>
-            </aside>
-
-            <!-- Retículo para seleção -->
-            <div id="vr-reticle" aria-hidden="true">
-                <span></span>
-            </div>
-        </main>
-
-        <!-- Painel inferior -->
-        <section class="control-dock">
-            <div class="dock-heading">
-                <div>
-                    <span class="eyebrow">PAINEL DE CONTROLE</span>
-                    <h2>Equipamentos</h2>
-                </div>
-                <span id="machine-count">0 equipamentos</span>
-            </div>
-
-            <div class="machine-list">
-
-                <button class="machine-card" type="button"
-                        data-machine="furadeira">
-                    <span class="machine-number">01</span>
-                    <span class="machine-symbol">⚙</span>
-                    <span class="machine-info">
-                        <strong>Furadeira de bancada</strong>
-                        <small>Perfuração e segurança</small>
-                    </span>
-                    <span class="machine-arrow">›</span>
-                </button>
-
-                <button class="machine-card" type="button"
-                        data-machine="cnc">
-                    <span class="machine-number">02</span>
-                    <span class="machine-symbol">▦</span>
-                    <span class="machine-info">
-                        <strong>Máquina CNC</strong>
-                        <small>Usinagem automatizada</small>
-                    </span>
-                    <span class="machine-arrow">›</span>
-                </button>
-
-                <button class="machine-card" type="button"
-                        data-machine="torno">
-                    <span class="machine-number">03</span>
-                    <span class="machine-symbol">◉</span>
-                    <span class="machine-info">
-                        <strong>Torno mecânico</strong>
-                        <small>Operação e componentes</small>
-                    </span>
-                    <span class="machine-arrow">›</span>
-                </button>
-
-                <button class="machine-card" type="button"
-                        data-machine="clp">
-                    <span class="machine-number">04</span>
-                    <span class="machine-symbol">▤</span>
-                    <span class="machine-info">
-                        <strong>Painel CLP</strong>
-                        <small>Automação industrial</small>
-                    </span>
-                    <span class="machine-arrow">›</span>
-                </button>
-
-                <button class="machine-card" type="button"
-                        data-machine="esteira">
-                    <span class="machine-number">05</span>
-                    <span class="machine-symbol">⇢</span>
-                    <span class="machine-info">
-                        <strong>Esteira industrial</strong>
-                        <small>Sensores e movimentação</small>
-                    </span>
-                    <span class="machine-arrow">›</span>
-                </button>
-
-            </div>
-
-            <!-- Ações do equipamento selecionado -->
-            <div class="machine-actions">
-                <div class="selected-machine">
-                    <span class="selection-indicator"></span>
-                    <div>
-                        <small>SELEÇÃO ATUAL</small>
-                        <strong id="selected-machine-name">Nenhuma máquina</strong>
-                    </div>
-                </div>
-
-                <div class="action-buttons">
-                    <button id="btn-start" class="button-primary"
-                            type="button" disabled>
-                        ▶ Iniciar
-                    </button>
-
-                    <button id="btn-stop" class="button-secondary"
-                            type="button" disabled>
-                        ■ Parar
-                    </button>
-
-                    <button id="btn-emergency" class="button-danger"
-                            type="button" disabled>
-                        ⚠ Emergência
-                    </button>
-                </div>
-            </div>
-        </section>
-
-        <!-- Rodapé -->
-        <footer class="footer">
-            <span>OFICINA VR SENAI</span>
-            <span>Ambiente didático de treinamento profissional</span>
-            <span id="device-mode">Modo: inicializando</span>
-        </footer>
-    </div>
-
-    <!-- Aplicação Three.js -->
-    <script type="module" src="./main.js"></script>
+  <script type="module" src="./main.js"></script>
 </body>
 </html>
