@@ -1,19 +1,13 @@
 
-/* =========================================
-   OFICINA VR SENAI — ESTILO VISUAL
-   ========================================= */
-
 :root {
   color-scheme: dark;
   --bg: #10151c;
-  --panel: rgba(15, 22, 30, 0.88);
+  --panel: rgba(15, 22, 30, 0.92);
   --border: rgba(148, 163, 184, 0.28);
   --accent: #f59e0b;
   --accent-light: #fbbf24;
   --text: #f8fafc;
   --muted: #aab7c6;
-  --success: #22c55e;
-  --danger: #ef4444;
 }
 
 * {
@@ -28,7 +22,7 @@ body {
   overflow: hidden;
   background: var(--bg);
   color: var(--text);
-  font-family: Inter, "Segoe UI", Arial, sans-serif;
+  font-family: "Segoe UI", Arial, sans-serif;
   overscroll-behavior: none;
 }
 
@@ -40,48 +34,53 @@ body {
 
 button {
   font: inherit;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+#game,
+#game canvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
 }
 
 #game {
-  position: fixed;
-  inset: 0;
   overflow: hidden;
   isolation: isolate;
 }
 
 #game canvas {
-  position: absolute;
-  inset: 0;
+  z-index: 0;
   display: block;
-  width: 100%;
-  height: 100%;
   outline: none;
   touch-action: none;
 }
 
-/* =========================================
-   BARRA SUPERIOR
-   ========================================= */
-
-#topbar {
+#topbar,
+#bottombar {
   position: absolute;
   z-index: 5;
-  top: 0;
   left: 0;
   right: 0;
-  min-height: 66px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
-  padding: 12px 22px;
-  background: linear-gradient(
-    180deg,
-    rgba(5, 10, 16, 0.94),
-    rgba(5, 10, 16, 0.5)
-  );
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  gap: 12px;
   pointer-events: none;
+}
+
+#topbar {
+  top: 0;
+  min-height: 66px;
+  padding: 12px 22px;
+  background: linear-gradient(#050a10ee, #050a1080);
+  border-bottom: 1px solid #ffffff12;
 }
 
 .brand {
@@ -101,23 +100,18 @@ button {
   color: var(--muted);
   font-size: 10px;
   font-weight: 700;
-  letter-spacing: 1.4px;
+  letter-spacing: 1px;
 }
 
 #status {
-  max-width: 50%;
+  max-width: 52%;
   padding: 8px 12px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: rgba(15, 23, 42, 0.7);
-  color: #dbeafe;
+  background: var(--panel);
   font-size: 12px;
   text-align: right;
 }
-
-/* =========================================
-   MIRA CENTRAL
-   ========================================= */
 
 #crosshair {
   position: absolute;
@@ -125,45 +119,35 @@ button {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  color: rgba(255, 255, 255, 0.9);
+  color: white;
   font-size: 24px;
-  font-weight: 300;
-  text-shadow: 0 0 5px #000;
+  text-shadow: 0 0 5px black;
   pointer-events: none;
 }
-
-/* =========================================
-   PAINEL DE AJUDA
-   ========================================= */
 
 #help-panel {
   position: absolute;
   z-index: 5;
-  top: 86px;
+  top: 84px;
   left: 18px;
   width: 245px;
   padding: 15px;
   border: 1px solid var(--border);
   border-radius: 12px;
   background: var(--panel);
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.25);
-  backdrop-filter: blur(10px);
   pointer-events: none;
 }
 
 #help-panel strong {
-  display: block;
-  margin-bottom: 12px;
   color: var(--accent-light);
   font-size: 12px;
-  letter-spacing: 1.5px;
+  letter-spacing: 1px;
 }
 
 #help-panel p {
-  margin: 8px 0;
+  margin: 9px 0;
   color: #d1d9e3;
   font-size: 12px;
-  line-height: 1.5;
 }
 
 kbd {
@@ -171,153 +155,120 @@ kbd {
   min-width: 22px;
   padding: 3px 5px;
   border: 1px solid #536174;
-  border-radius: 5px;
+  border-radius: 4px;
   background: #263242;
-  color: white;
   font-size: 10px;
-  font-weight: 800;
   text-align: center;
 }
-
-/* =========================================
-   MENSAGENS
-   ========================================= */
-
-#message {
-  position: absolute;
-  z-index: 8;
-  top: 82px;
-  left: 50%;
-  width: max-content;
-  max-width: min(90vw, 460px);
-  padding: 11px 16px;
-  transform: translateX(-50%) translateY(-8px);
-  border: 1px solid rgba(245, 158, 11, 0.4);
-  border-radius: 9px;
-  background: rgba(12, 18, 27, 0.94);
-  color: #fff7ed;
-  font-size: 13px;
-  line-height: 1.5;
-  text-align: center;
-  opacity: 0;
-  visibility: hidden;
-  transition:
-    opacity 180ms ease,
-    transform 180ms ease,
-    visibility 180ms ease;
-  pointer-events: none;
-}
-
-#message.visible {
-  opacity: 1;
-  visibility: visible;
-  transform: translateX(-50%) translateY(0);
-}
-
-/* =========================================
-   BARRA INFERIOR
-   ========================================= */
 
 #bottombar {
-  position: absolute;
-  z-index: 5;
-  right: 0;
   bottom: 0;
-  left: 0;
   min-height: 42px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
   padding: 10px 20px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  background: linear-gradient(
-    0deg,
-    rgba(5, 10, 16, 0.9),
-    rgba(5, 10, 16, 0.2)
-  );
+  border-top: 1px solid #ffffff12;
+  background: linear-gradient(0deg, #050a10e8, #050a1040);
   color: var(--muted);
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 1px;
-  pointer-events: none;
 }
 
 #selected-object {
   color: var(--accent-light);
   text-align: right;
-  letter-spacing: 0.3px;
 }
 
-/* =========================================
-   CONTROLES PARA CELULAR
-   ========================================= */
-
-#mobile-controls {
+#message {
   position: absolute;
-  z-index: 6;
-  right: 0;
-  bottom: 54px;
-  left: 0;
-  display: none;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 14px;
+  z-index: 8;
+  top: 80px;
+  left: 50%;
+  width: max-content;
+  max-width: 90vw;
+  padding: 11px 16px;
+  transform: translate(-50%, -8px);
+  border: 1px solid #f59e0b66;
+  border-radius: 9px;
+  background: #0c121bf2;
+  color: #fff7ed;
+  font-size: 13px;
+  text-align: center;
+  opacity: 0;
+  visibility: hidden;
+  transition: 180ms ease;
   pointer-events: none;
 }
 
-.movement-pad {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 7px;
-  pointer-events: auto;
+#message.visible {
+  transform: translate(-50%, 0);
+  opacity: 1;
+  visibility: visible;
 }
 
-.movement-row {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-}
+/* Tela inicial */
 
-#mobile-controls button {
-  width: 52px;
-  height: 52px;
+#instructions {
+  position: absolute;
+  z-index: 20;
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  border-radius: 14px;
-  background: rgba(15, 23, 42, 0.78);
-  color: white;
-  font-size: 19px;
+  padding: 20px;
+  background: #080d14a8;
+  backdrop-filter: blur(4px);
+}
+
+#instructions.hidden {
+  display: none;
+}
+
+.start-card,
+.loading-card {
+  width: min(100%, 410px);
+  padding: 30px 24px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: #0f172aee;
+  text-align: center;
+  box-shadow: 0 18px 60px #0007;
+}
+
+.eyebrow {
+  color: var(--accent-light);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 2px;
+}
+
+.start-card h2 {
+  margin: 14px 0;
+  font-size: 30px;
+}
+
+.start-card p,
+.start-card small {
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+#start-btn {
+  width: 100%;
+  margin: 16px 0 12px;
+  padding: 14px;
+  border: 0;
+  border-radius: 9px;
+  background: var(--accent);
+  color: #171717;
   font-weight: 900;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-  touch-action: none;
-  pointer-events: auto;
+  letter-spacing: 1px;
 }
 
-#mobile-controls button:active {
-  transform: scale(0.94);
-  border-color: var(--accent);
-  background: rgba(180, 83, 9, 0.9);
+#start-btn:not(:disabled):hover {
+  background: var(--accent-light);
 }
 
-#mobile-controls #look-button {
-  width: auto;
-  min-width: 110px;
-  height: 46px;
-  padding: 0 14px;
-  border-color: rgba(245, 158, 11, 0.6);
-  background: rgba(120, 53, 15, 0.88);
-  font-size: 11px;
-  letter-spacing: 0.5px;
-}
-
-/* =========================================
-   TELA DE CARREGAMENTO
-   ========================================= */
+/* Carregamento */
 
 #loading {
   position: fixed;
@@ -327,155 +278,106 @@ kbd {
   align-items: center;
   justify-content: center;
   padding: 20px;
-  background:
-    radial-gradient(
-      circle at 50% 40%,
-      rgba(51, 65, 85, 0.65),
-      transparent 55%
-    ),
-    #0b1017;
-  transition: opacity 300ms ease;
+  background: #0b1017;
+  transition: opacity 250ms ease;
 }
 
 #loading.hidden {
-  opacity: 0;
-  pointer-events: none;
+  display: none;
 }
 
-.loading-card {
-  width: min(100%, 390px);
-  padding: 34px 26px;
-  border: 1px solid var(--border);
-  border-radius: 18px;
-  background: rgba(15, 23, 42, 0.85);
-  text-align: center;
-  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.35);
-}
-
-.loading-card h1 {
-  margin: 20px 0 10px;
-  color: var(--accent-light);
-  font-size: 23px;
-  font-weight: 900;
-  letter-spacing: 2px;
-}
-
-.loading-card p {
-  margin: 0;
+#loading-message {
   color: var(--muted);
   font-size: 13px;
   line-height: 1.6;
 }
 
 .loading-spinner {
-  width: 48px;
-  height: 48px;
-  margin: 0 auto;
-  border: 4px solid rgba(255, 255, 255, 0.12);
+  width: 44px;
+  height: 44px;
+  margin: 0 auto 18px;
+  border: 4px solid #ffffff20;
   border-top-color: var(--accent);
   border-radius: 50%;
   animation: spin 850ms linear infinite;
 }
 
+.loading-card h1 {
+  color: var(--accent-light);
+  font-size: 22px;
+  letter-spacing: 2px;
+}
+
 @keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+  to { transform: rotate(360deg); }
 }
 
-/* =========================================
-   RESPONSIVIDADE
-   ========================================= */
+/* Controles móveis */
 
-@media (hover: none), (pointer: coarse) {
-  #mobile-controls {
-    display: flex;
-  }
-
-  #help-panel {
-    top: 78px;
-    left: 10px;
-    width: 190px;
-    padding: 10px;
-  }
-
-  #help-panel p {
-    margin: 6px 0;
-    font-size: 10px;
-  }
-
-  #help-panel strong {
-    margin-bottom: 8px;
-    font-size: 10px;
-  }
-
-  #topbar {
-    min-height: 58px;
-    padding: 10px 12px;
-  }
-
-  .brand strong {
-    font-size: 14px;
-  }
-
-  .brand span {
-    font-size: 8px;
-    letter-spacing: 0.8px;
-  }
-
-  #status {
-    max-width: 45%;
-    padding: 7px;
-    font-size: 10px;
-  }
-
-  #bottombar {
-    min-height: 36px;
-    padding: 8px 12px;
-    font-size: 9px;
-  }
-}
-
-@media (max-width: 480px) {
-  #help-panel {
-    width: 164px;
-  }
-
-  #help-panel p {
-    font-size: 9px;
-  }
-
-  #mobile-controls {
-    padding: 10px;
-  }
-
-  #mobile-controls button {
-    width: 46px;
-    height: 46px;
-    border-radius: 12px;
-  }
-
-  #mobile-controls #look-button {
-    min-width: 95px;
-    padding: 0 9px;
-    font-size: 10px;
-  }
-
-  .brand span {
-    max-width: 180px;
-  }
-}
-
-/* =========================================
-   MODO VR
-   ========================================= */
-
-body:has(canvas:fullscreen) #topbar,
-body:has(canvas:fullscreen) #help-panel,
-body:has(canvas:fullscreen) #bottombar,
-body:has(canvas:fullscreen) #mobile-controls,
-body:has(canvas:fullscreen) #crosshair {
+#mobile-controls {
+  position: absolute;
+  z-index: 6;
+  right: 0;
+  bottom: 52px;
+  left: 0;
   display: none;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px;
+  pointer-events: none;
+}
+
+.movement-pad,
+.movement-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+
+.movement-pad {
+  flex-direction: column;
+  pointer-events: auto;
+}
+
+#mobile-controls button {
+  width: 49px;
+  height: 49px;
+  border: 1px solid #ffffff45;
+  border-radius: 12px;
+  background: #0f172acc;
+  color: white;
+  font-size: 18px;
+  font-weight: 900;
+  touch-action: none;
+  pointer-events: auto;
+}
+
+#mobile-controls button:active {
+  background: #b45309e6;
+}
+
+#mobile-controls #look-button {
+  width: auto;
+  min-width: 112px;
+  padding: 0 12px;
+  border-color: #f59e0b99;
+  background: #78350fe8;
+  font-size: 10px;
+}
+
+#vr-button-container {
+  position: absolute;
+  z-index: 30;
+  right: 12px;
+  bottom: 52px;
+}
+
+/* Botão gerado pelo VRButton do Three.js */
+#vr-button-container button {
+  font-family: inherit !important;
+  border-radius: 8px !important;
 }
 
 body.vr-active #topbar,
@@ -486,10 +388,69 @@ body.vr-active #crosshair {
   display: none;
 }
 
+@media (hover: none), (pointer: coarse) {
+  #mobile-controls {
+    display: flex;
+  }
+
+  #help-panel {
+    top: 75px;
+    left: 8px;
+    width: 185px;
+    padding: 10px;
+  }
+
+  #help-panel p {
+    font-size: 10px;
+  }
+
+  #topbar {
+    min-height: 56px;
+    padding: 9px 12px;
+  }
+
+  .brand strong {
+    font-size: 14px;
+  }
+
+  .brand span {
+    font-size: 8px;
+  }
+
+  #status {
+    max-width: 45%;
+    padding: 6px;
+    font-size: 10px;
+  }
+
+  #bottombar {
+    padding: 8px 10px;
+    font-size: 9px;
+  }
+}
+
+@media (max-width: 480px) {
+  #mobile-controls {
+    padding: 9px;
+  }
+
+  #mobile-controls button {
+    width: 43px;
+    height: 43px;
+  }
+
+  #mobile-controls #look-button {
+    min-width: 96px;
+    font-size: 9px;
+  }
+
+  .start-card h2 {
+    font-size: 25px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
+  *, *::before, *::after {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }

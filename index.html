@@ -3,15 +3,12 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+
+  <meta name="theme-color" content="#10151c">
+  <meta name="description" content="Simulador industrial 3D para treinamento profissional SENAI.">
 
   <title>Oficina VR SENAI</title>
-
-  <meta
-    name="description"
-    content="Simulador industrial 3D para treinamento profissional SENAI."
-  >
-
   <link rel="stylesheet" href="./style.css">
 
   <script type="importmap">
@@ -23,7 +20,6 @@
   }
   </script>
 </head>
-
 <body>
   <div id="loading">
     <div class="loading-card">
@@ -39,39 +35,52 @@
         <strong>OFICINA VR</strong>
         <span>SENAI · TREINAMENTO INDUSTRIAL</span>
       </div>
-
       <div id="status">Inicializando...</div>
     </header>
 
-    <div id="crosshair">+</div>
+    <section id="instructions">
+      <div class="start-card">
+        <span class="eyebrow">SIMULADOR INDUSTRIAL 3D</span>
+        <h2>Oficina SENAI</h2>
+        <p>Explore o galpão e observe os equipamentos industriais.</p>
+        <button id="start-btn" type="button" disabled>
+          CARREGANDO...
+        </button>
+        <small>PC: WASD + mouse · Celular: controles na tela</small>
+      </div>
+    </section>
+
+    <div id="crosshair" aria-hidden="true">+</div>
 
     <section id="help-panel">
       <strong>CONTROLES</strong>
       <p><kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> Movimentar</p>
-      <p><kbd>↑</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>→</kbd> Alternativa</p>
-      <p>Mouse: olhar ao redor</p>
-      <p>Toque/clique: selecionar máquina</p>
+      <p><kbd>SHIFT</kbd> Correr</p>
+      <p>Mouse ou arraste a tela: olhar</p>
+      <p>Toque/clique: selecionar objeto</p>
+      <p><kbd>ESC</kbd> Liberar o mouse</p>
     </section>
 
     <div id="message" role="status" aria-live="polite"></div>
 
     <div id="mobile-controls">
       <div class="movement-pad">
-        <button data-move="forward" aria-label="Avançar">▲</button>
+        <button type="button" data-move="forward" aria-label="Avançar">▲</button>
         <div class="movement-row">
-          <button data-move="left" aria-label="Mover para esquerda">◀</button>
-          <button data-move="backward" aria-label="Recuar">▼</button>
-          <button data-move="right" aria-label="Mover para direita">▶</button>
+          <button type="button" data-move="left" aria-label="Mover à esquerda">◀</button>
+          <button type="button" data-move="backward" aria-label="Recuar">▼</button>
+          <button type="button" data-move="right" aria-label="Mover à direita">▶</button>
         </div>
       </div>
-
-      <button id="look-button" type="button">OLHAR / TOCAR</button>
+      <button id="look-button" type="button">TOCAR PARA OLHAR</button>
     </div>
 
     <footer id="bottombar">
       <span>SIMULADOR 3D</span>
       <span id="selected-object">Nenhuma máquina selecionada</span>
     </footer>
+
+    <div id="vr-button-container"></div>
   </div>
 
   <script type="module" src="./main.js"></script>
