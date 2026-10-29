@@ -24,7 +24,20 @@ const CONFIG = {
   sensibilidadeToque: 0.004,
 
   alturaCamera: 1.68,
-  limiteVerticalVisao: 1.45
+  limiteVerticalVisao: 1.45,
+    // Arquivos GLB individuais.
+  pastaModelos: "./",
+  bancada: "./scene.glb",
+
+  // Maior dimensão desejada de cada objeto, em metros.
+  tamanhosModelos: {
+    furadeira: 35.5,
+    cnc: 35.2,
+    torno: 35.2,
+    clp: 35.8,
+    esteira: 35.0,
+    bancada: 35.1
+  },
 };
 
 const $ = (seletor) => document.querySelector(seletor);
@@ -589,196 +602,263 @@ for (const x of [-11, -6, 0, 6, 11]) {
   );
 }
 
-// ======================================================
-// 9. CARREGAMENTO DO SCENE.GLB
-// ======================================================
+
+ // ======================================================
+ // 9. CARREGAMENTO DAS CINCO MÁQUINAS E DA BANCADA
+ // ======================================================
 
 const loader = new GLTFLoader();
-const grupoModelo = new THREE.Group();
 
-grupoModelo.name = "ModeloSceneGLB";
+const grupoModelo = new THREE.Group();
+grupoModelo.name = "EquipamentosSENAI";
 scene.add(grupoModelo);
 
-function listarObjetosDoModelo(raiz) {
-  const encontrados = [];
+const equipamentos = [
+  {
+    id: "furadeira",
+    nome: "Furadeira de bancada",
+    arquivo: "furadeira_bancada_detalhada.glb",
+    x: 0,
+    z: -12,
+    tamanho: CONFIG.tamanhosModelos.furadeira,
+    rotacaoY: 0,
+    rotacaoX: 0
+  },
+  {
+    id: "cnc",
+    nome: "Máquina CNC",
+    arquivo: "maquina_cnc_interativa_detalhada.glb",
+    x: -10,
+    z: -12,
+    tamanho: CONFIG.tamanhosModelos.cnc,
+    rotacaoY: 0,
+    rotacaoX: 0
+  },
+  {
+    id: "torno",
+    nome: "Torno mecânico",
+    arquivo: "torno_mecanico_interativo.glb",
+    x: -5,
+    z: -12,
+    tamanho: CONFIG.tamanhosModelos.torno,
+    rotacaoY: 0,
+    rotacaoX: 0
+  },
+  {
+    id: "clp",
+    nome: "Painel de automação com CLP",
+    arquivo: "painel_automacao_clp_realista.glb",
+    x: 5,
+    z: -12,
+    tamanho: CONFIG.tamanhosModelos.clp,
+    rotacaoY: 0,
+    rotacaoX: 0
+  },
+  {
+    id: "esteira",
+    nome: "Esteira industrial",
+    arquivo: "esteira_industrial_interativa.glb",
+    x: 10,
+    z: -12,
+    tamanho: CONFIG.tamanhosModelos.esteira,
+    rotacaoY: 0,
+    rotacaoX: 0
+  },
+  {
+    id: "bancada",
+    nome: "Bancada de ajustagem SENAI",
+    caminho: CONFIG.bancada,
+    x: 10,
+    z: -3,
+    tamanho: CONFIG.tamanhosModelos.bancada,
+    rotacaoY: -Math.PI / 2,
+    rotacaoX: 0
+  }
+];
 
-  raiz.traverse((objeto) => {
-    if (!objeto.isMesh) return;
-
-    objeto.castShadow = true;
-    objeto.receiveShadow = true;
-
-    encontrados.push(objeto);
+function carregarGLB(caminho) {
+  return new Promise((resolve, reject) => {
+    loader.load(
+      caminho,
+      (gltf) => resolve(gltf.scene),
+      undefined,
+      (erro) => reject(erro)
+    );
   });
-
-  return encontrados;
 }
 
-function posicionarModelo(raiz) {
-  const caixaInicial = new THREE.Box3().setFromObject(raiz);
+async function carregarEquipamento(config) {
+  const caminho =
+    config.caminho ??
+    `${CONFIG.pastaModelos}${config.arquivo}`;
 
-  if (caixaInicial.isEmpty()) {
-    throw new Error("O arquivo GLB não contém geometria visível.");
+  try {
+    atualizarStatus(`Carregando ${config.nome}`);
+
+    const modelo = await carregarGLB(caminho);
+
+    modelo.name = config.nome;
+    modelo.userData.idEquipamento = config.id;
+    modelo.userData.nomeEquipamento = config.nome;
+
+    // Aplica a rotação antes de calcular o tamanho.
+    modelo.rotation.set(
+      config.rotacaoX ?? 0,
+      config.rotacaoY ?? 0,
+      0
+    );
+
+    modelo.updateMatrixWorld(true);
+
+    const caixaOriginal = new THREE.Box3().setFromObject(modelo);
+
+    if (caixaOriginal.isEmpty()) {
+      throw new Error("O arquivo não contém geometria visível.");
+    }
+
+    const dimensoesOriginais =
+      caixaOriginal.getSize(new THREE.Vector3());
+
+    const maiorDimensao = Math.max(
+      dimensoesOriginais.x,
+      dimensoesOriginais.y,
+      dimensoesOriginais.z
+    );
+
+    if (!Number.isFinite(maiorDimensao) || maiorDimensao <= 0) {
+      throw new Error("Dimensões inválidas no arquivo GLB.");
+    }
+
+    // Ajusta a maior dimensão ao tamanho desejado.
+    // A escala é uniforme: não deforma o modelo.
+    const fator = config.tamanho / maiorDimensao;
+    modelo.scale.multiplyScalar(fator);
+    modelo.updateMatrixWorld(true);
+
+    // Recalcula a caixa depois da escala.
+    const caixa = new THREE.Box3().setFromObject(modelo);
+    const centro = caixa.getCenter(new THREE.Vector3());
+    const dimensoesFinais = caixa.getSize(new THREE.Vector3());
+
+    // Centraliza horizontalmente no ponto escolhido
+    // e coloca a parte inferior sobre o piso (Y = 0).
+    modelo.position.set(
+      config.x - centro.x,
+      -caixa.min.y,
+      config.z - centro.z
+    );
+
+    modelo.traverse((objeto) => {
+      if (!objeto.isMesh) return;
+
+      objeto.castShadow = true;
+      objeto.receiveShadow = true;
+
+      objeto.userData.idEquipamento = config.id;
+      objeto.userData.nomeEquipamento = config.nome;
+    });
+
+    grupoModelo.add(modelo);
+
+    console.log(`[GLB] ${config.nome}`, {
+      arquivo: caminho,
+      escala: fator,
+      dimensoesMetros: dimensoesFinais.toArray(),
+      posicao: modelo.position.toArray()
+    });
+
+    return {
+      id: config.id,
+      nome: config.nome,
+      objeto: modelo,
+      carregado: true
+    };
+  } catch (erro) {
+    console.error(
+      `[GLB] Falha ao carregar ${config.nome}: ${caminho}`,
+      erro
+    );
+
+    mostrarMensagem(
+      `Não foi possível carregar: ${config.nome}. Confira o arquivo e o caminho.`,
+      5000
+    );
+
+    return {
+      id: config.id,
+      nome: config.nome,
+      objeto: null,
+      carregado: false,
+      erro
+    };
   }
-
-  const tamanhoInicial = caixaInicial.getSize(new THREE.Vector3());
-  const centroInicial = caixaInicial.getCenter(new THREE.Vector3());
-
-  const maiorDimensao = Math.max(
-    tamanhoInicial.x,
-    tamanhoInicial.y,
-    tamanhoInicial.z
-  );
-
-  if (!Number.isFinite(maiorDimensao) || maiorDimensao <= 0) {
-    throw new Error("Não foi possível calcular as dimensões do modelo.");
-  }
-
-  // Não aumenta automaticamente modelos pequenos.
-  const fator = Math.min(
-    1,
-    CONFIG.tamanhoMaximoModelo / maiorDimensao
-  );
-
-  raiz.scale.multiplyScalar(fator);
-
-  // Recalcula as dimensões depois da escala.
-  raiz.updateMatrixWorld(true);
-
-  const caixaFinal = new THREE.Box3().setFromObject(raiz);
-  const centroFinal = caixaFinal.getCenter(new THREE.Vector3());
-
-  // Centraliza horizontalmente e apoia o modelo no piso.
-  raiz.position.x -= centroFinal.x;
-  raiz.position.z -= centroFinal.z;
-  raiz.position.y -= caixaFinal.min.y;
-
-  // Coloca o conjunto de máquinas dentro da oficina.
-  raiz.position.z -= 3;
-
-  raiz.updateMatrixWorld(true);
-
-  const caixaPosicionada = new THREE.Box3().setFromObject(raiz);
-  const dimensoesFinais = caixaPosicionada.getSize(new THREE.Vector3());
-
-  console.log("[Oficina VR SENAI] Dimensões originais:", tamanhoInicial.toArray());
-  console.log("[Oficina VR SENAI] Fator de escala aplicado:", fator);
-  console.log("[Oficina VR SENAI] Dimensões finais:", dimensoesFinais.toArray());
 }
 
-function registrarMaquinasDoGlb(raiz) {
-  // Registra meshes para diagnóstico e seleção.
-  // Não pressupõe nomes específicos no arquivo exportado.
-  const meshes = listarObjetosDoModelo(raiz);
-
-  window.__oficina.maquinas = meshes.map((objeto, indice) => ({
-    id: indice,
-    nome: objeto.name || `Objeto ${indice + 1}`,
-    objeto
-  }));
-
-  console.log(
-    `[Oficina VR SENAI] Modelo carregado com ${meshes.length} meshes.`
-  );
-
-  console.log(
-    "[Oficina VR SENAI] Nomes dos primeiros objetos:",
-    meshes.slice(0, 30).map((m) => m.name || "(sem nome)")
-  );
-}
-
-function carregarScene() {
-  atualizarStatus("Carregando modelo 3D");
+async function carregarTodosEquipamentos() {
+  atualizarStatus("Carregando equipamentos 3D");
 
   if (loadingMessage) {
-    loadingMessage.textContent = "Carregando scene.glb...";
+    loadingMessage.textContent = "Carregando máquinas e bancada...";
   }
 
-  loader.load(
-    CONFIG.modelo,
+  // Cada carregamento é tratado individualmente:
+  // um arquivo com erro não bloqueia os outros.
+  const resultados = await Promise.all(
+    equipamentos.map(carregarEquipamento)
+  );
 
-    (gltf) => {
-      try {
-        const modelo = gltf.scene;
+  const carregados = resultados.filter(
+    (item) => item.carregado
+  );
 
-        modelo.name = "SceneMaquinasSENAI";
+  const falhas = resultados.filter(
+    (item) => !item.carregado
+  );
 
-        posicionarModelo(modelo);
-        grupoModelo.add(modelo);
-        registrarMaquinasDoGlb(modelo);
+  // Mantém compatibilidade com a seção de seleção existente.
+  window.__oficina.modelo = grupoModelo;
+  window.__oficina.maquinas = carregados.map((item) => ({
+    id: item.id,
+    nome: item.nome,
+    objeto: item.objeto
+  }));
+  window.__oficina.carregado = carregados.length > 0;
 
-        window.__oficina.modelo = modelo;
-        window.__oficina.carregado = true;
+  if (startButton) {
+    startButton.disabled = false;
+    startButton.textContent = "ENTRAR NA OFICINA";
+  }
 
-        atualizarStatus("Modelo 3D carregado");
+  ocultarCarregamento();
 
-        if (startButton) {
-          startButton.disabled = false;
-          startButton.textContent = "ENTRAR NA OFICINA";
-        }
+  if (falhas.length === 0) {
+    atualizarStatus("Todos os equipamentos carregados");
 
-        ocultarCarregamento();
+    mostrarMensagem(
+      `${carregados.length} equipamentos carregados com sucesso.`,
+      4500
+    );
+  } else {
+    atualizarStatus(
+      `${carregados.length} carregados · ${falhas.length} com erro`
+    );
 
-        mostrarMensagem(
-          "Modelo carregado. Entre na oficina para começar.",
-          4500
-        );
+    mostrarMensagem(
+      `${carregados.length} equipamentos carregados. ${falhas.length} arquivo(s) precisam ser verificados no Console.`,
+      7000
+    );
+  }
 
-        console.log("[Oficina VR SENAI] scene.glb carregado com sucesso.");
-      } catch (erro) {
-        console.error("[Oficina VR SENAI] Erro ao preparar o modelo:", erro);
-
-        atualizarStatus("Erro ao preparar modelo");
-
-        if (startButton) {
-          startButton.disabled = false;
-          startButton.textContent = "ENTRAR NA OFICINA";
-        }
-
-        ocultarCarregamento();
-
-        mostrarMensagem(
-          "O arquivo abriu, mas não foi possível preparar sua geometria.",
-          6000
-        );
-      }
-    },
-
-    (progresso) => {
-      if (progresso.total > 0 && loadingMessage) {
-        const percentual = Math.round(
-          (progresso.loaded / progresso.total) * 100
-        );
-
-        loadingMessage.textContent =
-          `Carregando modelo industrial: ${percentual}%`;
-      }
-    },
-
-    (erro) => {
-      console.error(
-        "[Oficina VR SENAI] Falha no GLTFLoader:",
-        erro
-      );
-
-      atualizarStatus("Modelo não encontrado");
-
-      if (startButton) {
-        startButton.disabled = false;
-        startButton.textContent = "ENTRAR SEM O MODELO";
-      }
-
-      ocultarCarregamento();
-
-      mostrarMensagem(
-        "Não foi possível abrir scene.glb. Confira o caminho e o Console.",
-        8000
-      );
-    }
+  console.table(
+    resultados.map((item) => ({
+      id: item.id,
+      equipamento: item.nome,
+      carregado: item.carregado
+    }))
   );
 }
 
-carregarScene();
+carregarTodosEquipamentos();
 
 // ======================================================
 // 10. IDENTIFICAÇÃO E SELEÇÃO DE OBJETOS
