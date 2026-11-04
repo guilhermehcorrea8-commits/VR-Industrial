@@ -35,6 +35,7 @@ src/
   materials.js      — texturas procedurais (concreto, tijolo, reboco, tela...)
   galpao.js         — galpão: paredes, telhão, treliças, portão, corredor
   maquinas.js       — CATALOGO + divisão e montagem do GLB + regra de seleção
+  furadeira.js      — mecanismo da alavanca de avanço (giro, curso do punção, eixo)
   missoes.js        — 6 missões / 29 passos, pontuação e progresso
   ui.js             — contratos de DOM + painel 3D para VR
   input.js          — jogador, entrada (teclado/toque/XR) e colisão AABB
@@ -98,7 +99,12 @@ meshes próprias, com `userData.interativo`, `idPeca`, `idEquipamento`,
 mescladas por material** (`mergeGeometries`, geometria assentada em
 `applyMatrix4(matrixWorld)`), o que derruba o número de draw calls de mais de
 mil para algumas centenas — essencial para o Quest. Resultado medido em
-execução: **64 peças de missão, 186 alvos de raycast, 10 máquinas**.
+execução: **64 peças de missão, 195 alvos de raycast, 10 máquinas**.
+
+Peças listadas em `CATALOGO[].mecanicas` também ficam fora da mescla, mas sem
+`interativo`: são corpo de mecanismo (o cubo e os raios da alavanca, o punção e
+a broca), marcadas com `userData.base` para o módulo do equipamento reconhecê-
+las pelo nome mesmo com sufixo numérico.
 
 ### Visores atravessáveis
 
@@ -130,6 +136,40 @@ VR e a mensagem flutuante são atualizados pelo mesmo `publicar()`.
 `missoes.alvoEsperado` expõe a peça do passo atual, e é ela que a tolerância de
 atravessar visor usa.
 
+## A furadeira em funcionamento
+
+`src/furadeira.js` é o único mecanismo animado do projeto. Clicar em qualquer
+uma das três empunhaduras pretas do manete — `FeedGrip_0` (atrás), `FeedGrip_1`
+(cima), `FeedGrip_2` (frente), todas com `idPeca = alavanca_avanco` — gira o
+conjunto do cubo em torno do eixo dos raios e desce a árvore **um degrau por
+clique**, três degraus até o fundo; no fim do curso o clique seguinte inverte o
+sentido e a mola devolve a árvore. O mandril (`ChuckBody`, `ChuckLowerRing`,
+`ChuckJawSleeve`, `DrillBit`) gira **só no trecho em que está cortando**.
+
+Nada no módulo usa coordenadas decoradas: o pivô é o centro da caixa do
+`FeedHub`, o eixo é o produto vetorial de dois raios e o centro de giro do
+mandril vem da caixa do `ChuckBody`.
+
+O `scene.glb` exporta a árvore já no fim do curso — a broca nasce embaixo da
+mesa. Por isso o descanso levanta a árvore 15 cm e a mesa desce 18 cm (altura
+normal de bancada de furadeira): assim o corte acontece **na** superfície da
+mesa em vez de dentro dela. Os dois grupos são montados no carregamento, antes
+de qualquer clique.
+
+## Caixas de mensagem
+
+A mesma frase sai por três caminhos, e cada um se ajusta sozinho:
+
+- **PC e celular** — `#message`, em `style.css`, mede-se pela janela
+  (`clamp()` na fonte, `max-width: min(92vw, 620px)`, `white-space: pre-line`
+  para as duas linhas do feedback de missão + mecanismo), com folga do entalhe
+  via `env(safe-area-inset-*)` e uma faixa para celular deitado que encolhe a
+  caixa antes de brigar com a máquina na mira.
+- **VR** — `criarPainelVR` quebra o texto em até quatro linhas e reduz a fonte
+  antes de cortar, porque dentro do headset não há rolagem. `ui.mensagem()`
+  escreve nos dois destinos (`ui.ligarPainel()`); a DOM fica escondida em XR
+  pelo `body.vr-active`.
+
 ## Qualidade por dispositivo
 
 `src/render.js` define `ORCAMENTOS` para `desktop`, `mobile` e `vr` (pixel
@@ -141,9 +181,11 @@ recompilados ao desligar as sombras.
 ## Depuração
 
 `window.__oficina` expõe `{ THREE, scene, camera, jogador, renderer, missoes,
-alvos, entrada, CATALOGO }` no console do navegador. O console também imprime,
-por máquina, `meshes originais → draw calls`, dimensões em metros e o resumo do
-carregamento; nós não reconhecidos pelo `CATALOGO` geram um `console.warn`.
+alvos, entrada, CATALOGO, painelVR, furadeira }` no console do navegador (o
+último é getter: só ganha valor depois do carregamento das máquinas). O console
+também imprime, por máquina, `meshes originais → draw calls`, dimensões em
+metros e o resumo do carregamento; nós não reconhecidos pelo `CATALOGO` geram um
+`console.warn`.
 
 ## Controles
 

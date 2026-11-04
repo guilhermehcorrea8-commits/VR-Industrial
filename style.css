@@ -8,6 +8,11 @@
   --accent-light: #fbbf24;
   --text: #f8fafc;
   --muted: #aab7c6;
+
+  /* Altura da barra superior: as caixas de mensagem descem a partir dela, e o
+     entalhe do celular entra como folga extra. */
+  --altura-topbar: 66px;
+  --folga-topo: calc(env(safe-area-inset-top, 0px) + 14px);
 }
 
 * {
@@ -77,8 +82,8 @@ button:disabled {
 
 #topbar {
   top: 0;
-  min-height: 66px;
-  padding: 12px 22px;
+  min-height: calc(var(--altura-topbar) + env(safe-area-inset-top, 0px));
+  padding: calc(12px + env(safe-area-inset-top, 0px)) 22px 12px;
   background: linear-gradient(#050a10ee, #050a1080);
   border-bottom: 1px solid #ffffff12;
 }
@@ -104,13 +109,14 @@ button:disabled {
 }
 
 #status {
-  max-width: 52%;
+  max-width: min(52%, 360px);
   padding: 8px 12px;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--panel);
-  font-size: 12px;
+  font-size: clamp(10px, 1.6vw, 12px);
   text-align: right;
+  overflow-wrap: anywhere;
 }
 
 #crosshair {
@@ -191,21 +197,29 @@ kbd {
   white-space: nowrap;
 }
 
+/* Caixa de mensagem. Serve ao PC, ao celular e ao espelho do navegador do
+   headset, então se mede pela janela — nunca pelo tamanho do texto: quebra
+   linha, respeita o entalhe e não passa da metade da tela em pé. */
 #message {
   position: absolute;
   z-index: 8;
-  top: 80px;
+  top: calc(var(--altura-topbar) + var(--folga-topo));
   left: 50%;
   width: max-content;
-  max-width: 90vw;
-  padding: 11px 16px;
+  max-width: min(92vw, 620px);
+  max-height: 42vh;
+  overflow: hidden;
+  padding: clamp(8px, 1.6vh, 12px) clamp(12px, 3vw, 18px);
   transform: translate(-50%, -8px);
   border: 1px solid #f59e0b66;
   border-radius: 9px;
   background: #0c121bf2;
   color: #fff7ed;
-  font-size: 13px;
+  font-size: clamp(12px, 2.4vw, 15px);
+  line-height: 1.45;
   text-align: center;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
   opacity: 0;
   visibility: hidden;
   transition: 180ms ease;
@@ -227,7 +241,7 @@ kbd {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
+  padding: 20px max(20px, env(safe-area-inset-left)) 20px max(20px, env(safe-area-inset-right));
   background: #080d14a8;
   backdrop-filter: blur(4px);
 }
@@ -239,7 +253,9 @@ kbd {
 .start-card,
 .loading-card {
   width: min(100%, 410px);
-  padding: 30px 24px;
+  max-height: calc(100vh - 40px);
+  overflow: auto;
+  padding: clamp(18px, 5vh, 30px) clamp(16px, 5vw, 24px);
   border: 1px solid var(--border);
   border-radius: 18px;
   background: #0f172aee;
@@ -256,13 +272,14 @@ kbd {
 
 .start-card h2 {
   margin: 14px 0;
-  font-size: 30px;
+  font-size: clamp(22px, 6vw, 30px);
 }
 
 .start-card p,
 .start-card small {
   color: var(--muted);
   line-height: 1.6;
+  overflow-wrap: anywhere;
 }
 
 #start-btn {
@@ -396,12 +413,18 @@ kbd {
 body.vr-active #topbar,
 body.vr-active #help-panel,
 body.vr-active #bottombar,
+body.vr-active #message,
 body.vr-active #mobile-controls,
+body.vr-active #instructions,
 body.vr-active #crosshair {
   display: none;
 }
 
 @media (hover: none), (pointer: coarse) {
+  :root {
+    --altura-topbar: 56px;
+  }
+
   #mobile-controls {
     display: flex;
   }
@@ -418,8 +441,7 @@ body.vr-active #crosshair {
   }
 
   #topbar {
-    min-height: 56px;
-    padding: 9px 12px;
+    padding: calc(9px + env(safe-area-inset-top, 0px)) 12px 9px;
   }
 
   .brand strong {
@@ -433,18 +455,49 @@ body.vr-active #crosshair {
   #status {
     max-width: 45%;
     padding: 6px;
-    font-size: 10px;
+  }
+
+  /* No toque a caixa encosta a barra e cede largura para o texto caber em
+     poucas linhas, sem nunca sair da tela. */
+  #message {
+    max-width: min(94vw, 440px);
+    font-size: clamp(11px, 3.2vw, 14px);
   }
 
   #bottombar {
-    padding: 8px 10px;
+    padding: 8px max(10px, env(safe-area-inset-left)) calc(8px + env(safe-area-inset-bottom, 0px)) max(10px, env(safe-area-inset-right));
     font-size: 9px;
+  }
+
+  #mobile-controls {
+    bottom: calc(52px + env(safe-area-inset-bottom, 0px));
+    padding: 14px max(14px, env(safe-area-inset-left)) 14px max(14px, env(safe-area-inset-right));
+  }
+}
+
+/* Celular deitado e janelas baixas: a mensagem encolhe antes de brigar com a
+   máquina que o aluno está mirando. */
+@media (max-height: 480px) {
+  :root {
+    --altura-topbar: 48px;
+    --folga-topo: calc(env(safe-area-inset-top, 0px) + 8px);
+  }
+
+  #message {
+    max-height: 30vh;
+    padding: 6px 12px;
+    font-size: clamp(10px, 2.6vh, 13px);
+    line-height: 1.35;
+  }
+
+  #help-panel {
+    display: none;
   }
 }
 
 @media (max-width: 480px) {
   #mobile-controls {
-    padding: 9px;
+    padding: 9px max(9px, env(safe-area-inset-left)) 9px max(9px, env(safe-area-inset-right));
   }
 
   #mobile-controls button {
@@ -455,10 +508,6 @@ body.vr-active #crosshair {
   #mobile-controls #look-button {
     min-width: 96px;
     font-size: 9px;
-  }
-
-  .start-card h2 {
-    font-size: 25px;
   }
 }
 

@@ -12,6 +12,7 @@ import { criarMateriais } from "./src/materials.js";
 import { criarUI, criarPainelVR } from "./src/ui.js";
 import { criarGalpao, MEDIDAS } from "./src/galpao.js";
 import { dividirSceneGlb, escolherAcerto, CATALOGO } from "./src/maquinas.js";
+import { criarFuradeira } from "./src/furadeira.js";
 import { criarJogador, criarEntrada, atualizarJogador } from "./src/input.js";
 import { criarControlesComputador } from "./src/controls/computerControls.js";
 import { criarControlesMobile } from "./src/controls/mobileControls.js";
@@ -51,6 +52,7 @@ scene.add(jogador);
 
 const painelVR = criarPainelVR(THREE, camera);
 painelVR.mostrar(false);
+ui.ligarPainel(painelVR);
 
 const { mats } = criarMateriais(renderer);
 
@@ -88,6 +90,9 @@ const maquinas = new THREE.Group();
 maquinas.name = "Maquinas";
 scene.add(maquinas);
 
+// Mecanismo da furadeira: montado junto das máquinas, atualizado no loop.
+let furadeira = null;
+
 // O raycast considera também os corpos mesclados: é isso que impede a mira de
 // atravessar uma máquina para alcançar a peça que está atrás dela. A exceção é
 // o acrílico de visor, marcado como atravessável — aponta-se para o componente
@@ -109,6 +114,9 @@ async function carregarMaquinas() {
     drawCalls += montada.drawCalls;
     pecas += montada.interativas.length;
     colisores.push(montada.colisor);
+
+    if (montada.id === "furadeira") furadeira = criarFuradeira(montada);
+
     montada.grupo.traverse((obj) => {
       if (obj.isMesh) alvos.push(obj);
     });
@@ -206,21 +214,46 @@ function descreverAlvo(acerto) {
   };
 }
 
-function selecionar() {
-  const acerto = ponteiro();
-  const { alvo, nome } = descreverAlvo(acerto);
-
-  ui.selecionado(nome);
-
+// Uma única resposta para o alvo escolhido — a mesma no clique do mouse, no
+// toque da tela e no gatilho do controller.
+function responderAlvo(alvo, nome) {
   if (!alvo) {
     ui.mensagem(`${nome} — aponte para uma peça de comando`, 2600);
     return;
   }
 
   const resultado = missoes.registrar(alvo);
-  if (resultado === "acerto") ui.mensagem(`Correto: ${nome}`, 2600);
-  else if (resultado === "erro") ui.mensagem("Ainda não — o passo atual pede outra peça", 3000);
-  else ui.mensagem(`Selecionado: ${nome}`, 2200);
+  const mecanico = furadeira?.acionar(alvo);
+
+  let texto;
+  let duracao;
+  if (resultado === "acerto") {
+    texto = `Correto: ${nome}`;
+    duracao = 2600;
+  } else if (resultado === "erro") {
+    texto = "Ainda não — o passo atual pede outra peça";
+    duracao = 3000;
+  } else {
+    texto = `Selecionado: ${nome}`;
+    duracao = 2200;
+  }
+
+  // O mecanismo responde junto: a caixa aceita as duas linhas, e o erro da
+  // missão não some atrás do feedback da máquina.
+  if (mecanico) {
+    texto = `${texto}\n${mecanico}`;
+    duracao = 4600;
+  }
+
+  ui.mensagem(texto, duracao);
+}
+
+function selecionar() {
+  const acerto = ponteiro();
+  const { alvo, nome } = descreverAlvo(acerto);
+
+  ui.selecionado(nome);
+  responderAlvo(alvo, nome);
 }
 
 // ---------- MISSÕES ----------
@@ -260,12 +293,7 @@ const controlesVR = criarControlesVR({
   aoSelecionar: (acerto) => {
     const { alvo, nome } = descreverAlvo(acerto);
     ui.selecionado(nome);
-    if (!alvo) {
-      ui.mensagem(`${nome} — aponte para uma peça de comando`, 2600);
-      painelVR.exibir(nome);
-      return;
-    }
-    missoes.registrar(alvo);
+    responderAlvo(alvo, nome);
   },
   aoMudarModo: () => ui.status("Modo VR ativo")
 });
@@ -346,6 +374,8 @@ const contextoMovimento = {
 function animar() {
   const delta = Math.min(relogio.getDelta(), 0.05);
 
+  furadeira?.atualizar(delta);
+
   if (iniciado) {
     atualizarJogador(jogador, camera, entrada, delta, contextoMovimento);
 
@@ -364,5 +394,8 @@ function animar() {
 
 renderer.setAnimationLoop(animar);
 
-window.__oficina = { THREE, scene, camera, jogador, renderer, missoes, alvos, entrada, CATALOGO };
+window.__oficina = {
+  THREE, scene, camera, jogador, renderer, missoes, alvos, entrada, CATALOGO, painelVR,
+  get furadeira() { return furadeira; }
+};
 console.log("[Oficina VR SENAI] módulos carregados.");

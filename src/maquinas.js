@@ -60,16 +60,26 @@ export const CATALOGO = [
     assinatura: "QuillHousing",
     x: 7.6, z: -8.5, rotY: -Math.PI / 2,
     pecas: [
-      // ChuckBody e DrillBit são o eixo e a haste internos, engolidos pelo
-      // cabeçote e pela mesa no modelo: não dá para apontar para eles em pé.
-      // O mandril visível é a luva das mordsas (ChuckJawSleeve).
+      // O mandril que o aluno alcança é a luva das mordsas (ChuckJawSleeve):
+      // ChuckBody e DrillBit são o eixo e a haste, e agora vivem no punção
+      // móvel (mecanicas) em vez de desaparecer mesclados no cabeçote.
       ["ChuckJawSleeve", "mandril_furadeira", "Mandril da furadeira", "Fixar a peça no mandril"],
       ["WorkTableTop", "mesa_furadeira", "Mesa da furadeira", "Regular altura e centro da mesa"],
+      // Os três nomes abaixo caem no mesmo idPeca: são as empunhaduras pretas
+      // do mesmo manete (FeedGrip_0 de trás, _1 de cima, _2 da frente), e
+      // qualquer uma delas aciona o avanço — ver src/furadeira.js.
       ["FeedGrip", "alavanca_avanco", "Alavanca de avanço", "Acionar o avanço manual da árvore"],
       ["BeltCoverLid", "tampa_correia", "Tampa da correia", "Abrir a proteção para escolher a rotação"],
       ["MotorBody", "motor_furadeira", "Motor da furadeira", "Identificar o motor e sua plaqueta"],
       ["ControlPanel", "painel_furadeira", "Painel de comando da furadeira", "Ligar a máquina pelo comando"],
       ["GuardScreen", "protetor_furadeira", "Protetor acrílico da furadeira", "Conferir a proteção do ponto de furação"]
+    ],
+    // Corpo móvel do mecanismo, mantido em meshes próprias para poder girar e
+    // descer. As empunhaduras já estão em `pecas`; o resto é engolido pela
+    // mescla se não for listado aqui.
+    mecanicas: [
+      "FeedHub", "FeedSpoke",
+      "QuillChrome", "SpindleCollar", "ChuckBody", "ChuckLowerRing", "DrillBit"
     ]
   },
   {
@@ -227,7 +237,12 @@ function identificar(bruto) {
   for (const [nome, idPeca, rotulo, descricao] of item.pecas) {
     mapa.set(nome, { idPeca, rotulo, descricao });
   }
-  return { item, mapa, visores: new Set(item.visores || []) };
+  return {
+    item,
+    mapa,
+    visores: new Set(item.visores || []),
+    mecanicas: new Set(item.mecanicas || [])
+  };
 }
 
 // As geometrias do arquivo usam POSITION, NORMAL e TEXCOORD_0 indexados. A
@@ -267,7 +282,7 @@ export function montarMaquina(bruto) {
   const reconhecimento = identificar(bruto);
   if (!reconhecimento) return null;
 
-  const { item, mapa, visores } = reconhecimento;
+  const { item, mapa, visores, mecanicas } = reconhecimento;
 
   bruto.updateMatrixWorld(true);
 
@@ -280,6 +295,7 @@ export function montarMaquina(bruto) {
 
   const porMaterial = new Map();
   const interativas = [];
+  const moveis = [];
   const visoresMontados = [];
   let mescladas = 0;
 
@@ -291,7 +307,8 @@ export function montarMaquina(bruto) {
 
     g.applyMatrix4(obj.matrixWorld);
 
-    const spec = mapa.get(obj.name) || mapa.get(nomeBase(obj.name));
+    const base = nomeBase(obj.name);
+    const spec = mapa.get(obj.name) || mapa.get(base);
 
     if (spec) {
       const peca = new THREE.Mesh(g, obj.material);
@@ -299,6 +316,7 @@ export function montarMaquina(bruto) {
       peca.castShadow = true;
       peca.receiveShadow = true;
       peca.userData.interativo = true;
+      peca.userData.base = base;
       peca.userData.idPeca = spec.idPeca;
       peca.userData.idEquipamento = item.id;
       peca.userData.nomeEquipamento = spec.rotulo;
@@ -311,7 +329,7 @@ export function montarMaquina(bruto) {
       return;
     }
 
-    if (visores.has(obj.name) || visores.has(nomeBase(obj.name))) {
+    if (visores.has(obj.name) || visores.has(base)) {
       const visor = new THREE.Mesh(g, materialVisor(obj.material));
       visor.name = obj.name;
       visor.userData.idEquipamento = item.id;
@@ -319,6 +337,22 @@ export function montarMaquina(bruto) {
       visor.userData.atravessavel = true;
       conteudo.add(visor);
       visoresMontados.push(visor);
+      return;
+    }
+
+    // Peça de mecanismo: fica fora da mescla porque precisa girar ou descer.
+    // A geometria já está assentada no espaço do conteúdo, então o pivô do
+    // movimento é montado depois, em src/furadeira.js, só pelo nome-base.
+    if (mecanicas.has(obj.name) || mecanicas.has(base)) {
+      const movel = new THREE.Mesh(g, obj.material);
+      movel.name = obj.name;
+      movel.castShadow = true;
+      movel.receiveShadow = true;
+      movel.userData.base = base;
+      movel.userData.idEquipamento = item.id;
+      movel.userData.nomeEquipamento = item.nome;
+      conteudo.add(movel);
+      moveis.push(movel);
       return;
     }
 
@@ -369,12 +403,14 @@ export function montarMaquina(bruto) {
     id: item.id,
     nome: item.nome,
     grupo: encaixe,
+    conteudo,
     dimensoes: caixa.getSize(new THREE.Vector3()),
     colisor: new THREE.Box3().setFromObject(encaixe),
     interativas,
+    moveis,
     atravessaveis: visoresMontados,
-    drawCalls: corpos + interativas.length + visoresMontados.length,
-    meshesOriginais: mescladas + interativas.length + visoresMontados.length
+    drawCalls: corpos + interativas.length + visoresMontados.length + moveis.length,
+    meshesOriginais: mescladas + interativas.length + visoresMontados.length + moveis.length
   };
 }
 

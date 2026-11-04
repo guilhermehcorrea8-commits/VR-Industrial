@@ -27,6 +27,7 @@ export function criarUI() {
   }
 
   let timerMensagem = null;
+  let painel = null;
 
   const ui = {
     elementos: el,
@@ -35,14 +36,19 @@ export function criarUI() {
       if (el.status) el.status.textContent = texto;
     },
 
+    // A mesma frase vai para a caixa da HUD e para o painel 3D: dentro do
+    // headset a DOM não aparece, e fora dele o painel está invisível.
     mensagem(texto, duracao = 3200) {
       console.log("[Oficina VR]", texto);
-      if (!el.message) return;
 
-      el.message.textContent = texto;
-      el.message.classList.add("visible");
-      clearTimeout(timerMensagem);
-      timerMensagem = setTimeout(() => el.message.classList.remove("visible"), duracao);
+      if (el.message) {
+        el.message.textContent = texto;
+        el.message.classList.add("visible");
+        clearTimeout(timerMensagem);
+        timerMensagem = setTimeout(() => el.message.classList.remove("visible"), duracao);
+      }
+
+      painel?.avisar(texto, duracao);
     },
 
     selecionado(texto) {
@@ -81,6 +87,10 @@ export function criarUI() {
 
     vrAtivo(ativo) {
       document.body.classList.toggle("vr-active", ativo);
+    },
+
+    ligarPainel(novoPainel) {
+      painel = novoPainel;
     }
   };
 
@@ -114,9 +124,54 @@ export function criarPainelVR(THREE, camera) {
   camera.add(painel);
   painel.position.set(0, -0.16, -0.55);
 
+  const MARGEM = 30;
+  const LARGURA_TITULO = canvas.width - MARGEM * 2 - 210; // sobra para o placar
+  const TOPO_CORPO = 74;
+  const MAX_LINHAS = 4;
+  const TAMANHOS = [26, 23, 20];
+
   let missao = "";
   let placar = "";
-  let aviso = "";
+  let passo = "";
+  let destaque = "";
+  let timerDestaque = null;
+
+  function quebrar(texto, largura, fonte) {
+    ctx.font = fonte;
+    ctx.textAlign = "left";
+    const linhas = [];
+
+    for (const paragrafo of String(texto ?? "").split("\n")) {
+      let atual = "";
+      for (const palavra of paragrafo.split(/\s+/).filter(Boolean)) {
+        const teste = atual ? `${atual} ${palavra}` : palavra;
+        if (atual && ctx.measureText(teste).width > largura) {
+          linhas.push(atual);
+          atual = palavra;
+        } else {
+          atual = teste;
+        }
+      }
+      linhas.push(atual);
+    }
+    return linhas;
+  }
+
+  // No headset não há rolagem: reduz a fonte antes de cortar o texto, e só
+  // reticências no último recurso.
+  function ajustar(texto) {
+    const largura = canvas.width - MARGEM * 2;
+
+    for (const tamanho of TAMANHOS) {
+      const linhas = quebrar(texto, largura, `${tamanho}px Arial`);
+      if (linhas.length <= MAX_LINHAS) return { linhas, tamanho };
+    }
+
+    const tamanho = TAMANHOS[TAMANHOS.length - 1];
+    const linhas = quebrar(texto, largura, `${tamanho}px Arial`).slice(0, MAX_LINHAS);
+    linhas[MAX_LINHAS - 1] = `${linhas[MAX_LINHAS - 1].slice(0, -1)}…`;
+    return { linhas, tamanho };
+  }
 
   function redesenhar() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -126,27 +181,36 @@ export function criarPainelVR(THREE, camera) {
     ctx.roundRect(0, 0, canvas.width, canvas.height, 26);
     ctx.fill();
 
-    ctx.strokeStyle = "#f59e0b";
+    ctx.strokeStyle = destaque ? "#fbbf24" : "#f59e0b";
     ctx.lineWidth = 4;
     ctx.beginPath();
     ctx.roundRect(4, 4, canvas.width - 8, canvas.height - 8, 22);
     ctx.stroke();
 
-    ctx.fillStyle = "#fbbf24";
-    ctx.font = "bold 34px Arial";
     ctx.textBaseline = "top";
-    ctx.fillText(missao, 30, 26);
 
-    ctx.fillStyle = "#e2e8f0";
-    ctx.font = "28px Arial";
-    const linhas = aviso.split("\n");
-    linhas.slice(0, 2).forEach((linha, i) => ctx.fillText(linha, 30, 84 + i * 36));
+    let fonteTitulo = 30;
+    ctx.font = `bold ${fonteTitulo}px Arial`;
+    while (fonteTitulo > 18 && ctx.measureText(missao).width > LARGURA_TITULO) {
+      fonteTitulo -= 2;
+      ctx.font = `bold ${fonteTitulo}px Arial`;
+    }
+    ctx.fillStyle = "#fbbf24";
+    ctx.fillText(missao, MARGEM, 22);
 
     ctx.fillStyle = "#7ee2a8";
-    ctx.font = "bold 30px Arial";
+    ctx.font = "bold 28px Arial";
     ctx.textAlign = "right";
-    ctx.fillText(placar, canvas.width - 30, 26);
+    ctx.fillText(placar, canvas.width - MARGEM, 22);
     ctx.textAlign = "left";
+
+    const corpo = ajustar(destaque || passo);
+    const entrelinha = corpo.tamanho + 8;
+    ctx.fillStyle = destaque ? "#fff7ed" : "#e2e8f0";
+    ctx.font = `${corpo.tamanho}px Arial`;
+    corpo.linhas.forEach((linha, indice) => {
+      ctx.fillText(linha, MARGEM, TOPO_CORPO + indice * entrelinha);
+    });
 
     textura.needsUpdate = true;
   }
@@ -155,7 +219,17 @@ export function criarPainelVR(THREE, camera) {
     mesh: painel,
     definirMissao(texto) { missao = texto; redesenhar(); },
     definirPlacar(texto) { placar = texto; redesenhar(); },
-    exibir(texto) { aviso = texto; redesenhar(); },
-    mostrar(mostrar) { painel.visible = mostrar; }
+    exibir(texto) { passo = texto; redesenhar(); },
+
+    // Mensagem temporária sobreposta ao passo: some sozinha e devolve o
+    // painel ao texto da missão, como faz a caixa da HUD.
+    avisar(texto, duracao = 3200) {
+      destaque = texto;
+      clearTimeout(timerDestaque);
+      timerDestaque = setTimeout(() => { destaque = ""; redesenhar(); }, duracao);
+      redesenhar();
+    },
+
+    mostrar(visivel) { painel.visible = visivel; }
   };
 }
