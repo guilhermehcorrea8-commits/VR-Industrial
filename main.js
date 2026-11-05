@@ -7,17 +7,21 @@ import {
   configurarRedimensionamento,
   aplicarQualidade,
   tipoDispositivo
-} from "./src/render.js";
-import { criarMateriais } from "./src/materials.js";
-import { criarUI, criarPainelVR } from "./src/ui.js";
-import { criarGalpao, MEDIDAS } from "./src/galpao.js";
-import { dividirSceneGlb, escolherAcerto, CATALOGO } from "./src/maquinas.js";
-import { criarFuradeira } from "./src/furadeira.js";
-import { criarJogador, criarEntrada, atualizarJogador } from "./src/input.js";
-import { criarControlesComputador } from "./src/controls/computerControls.js";
-import { criarControlesMobile } from "./src/controls/mobileControls.js";
-import { criarControlesVR } from "./src/controls/vrControls.js";
-import { criarMissoes } from "./src/missoes.js";
+} from "./src/nucleo/render.js";
+import { criarMateriais } from "./src/cena/materials.js";
+import { criarUI, criarPainelVR } from "./src/interface/ui.js";
+import { criarGalpao, MEDIDAS } from "./src/cena/galpao.js";
+import { dividirSceneGlb, escolherAcerto, CATALOGO } from "./src/cena/maquinas.js";
+import { criarFuradeira } from "./src/cena/furadeira.js";
+import { criarJogador, criarEntrada, atualizarJogador } from "./src/nucleo/input.js";
+import { criarControlesComputador } from "./src/controles/computerControls.js";
+import { criarControlesMobile } from "./src/controles/mobileControls.js";
+import { criarControlesVR } from "./src/controles/vrControls.js";
+import { criarLeitorGamepad } from "./src/controles/gamepad.js";
+import { criarMissoes, pertenceALinha } from "./src/missoes/missoes.js";
+import { criarAnimacoes } from "./src/interacao/animacoes.js";
+import { criarSistemaInteracoes } from "./src/interacao/interacoes.js";
+import { criarIndicadorProximoPasso } from "./src/interacao/indicador.js";
 
 const CONFIG = {
   modelo: "./scene.glb",
@@ -93,6 +97,11 @@ scene.add(maquinas);
 // Mecanismo da furadeira: montado junto das máquinas, atualizado no loop.
 let furadeira = null;
 
+// A ponte de animação resolve os nomes de ação da interação para clipes
+// futuros. Sem MANIFESTO preenchido, cada ação cai no rig provisório.
+const animacoes = criarAnimacoes();
+const interacoes = criarSistemaInteracoes({ animacoes });
+
 // O raycast considera também os corpos mesclados: é isso que impede a mira de
 // atravessar uma máquina para alcançar a peça que está atrás dela. A exceção é
 // o acrílico de visor, marcado como atravessável — aponta-se para o componente
@@ -117,6 +126,9 @@ async function carregarMaquinas() {
 
     if (montada.id === "furadeira") furadeira = criarFuradeira(montada);
 
+    animacoes.registrar(montada);
+    interacoes.registrar(montada, { furadeira: montada.id === "furadeira" ? furadeira : null });
+
     montada.grupo.traverse((obj) => {
       if (obj.isMesh) alvos.push(obj);
     });
@@ -130,8 +142,12 @@ async function carregarMaquinas() {
     console.warn("[máquinas] nós não reconhecidos:", resultado.naoReconhecidas.join(", "));
   }
 
+  const resumo = interacoes.resumo();
   console.log(
     `[máquinas] ${resultado.maquinas.length} máquinas, ${pecas} peças de missão, ${drawCalls} draw calls.`
+  );
+  console.log(
+    `[interações] ${resumo.maquinas} máquinas, ${resumo.mecanismos} rigs, ${resumo.acoes} ações.`
   );
   return resultado.maquinas;
 }
@@ -223,7 +239,7 @@ function responderAlvo(alvo, nome) {
   }
 
   const resultado = missoes.registrar(alvo);
-  const mecanico = furadeira?.acionar(alvo);
+  const resposta = interacoes.acionar(alvo);
 
   let texto;
   let duracao;
@@ -231,7 +247,9 @@ function responderAlvo(alvo, nome) {
     texto = `Correto: ${nome}`;
     duracao = 2600;
   } else if (resultado === "erro") {
-    texto = "Ainda não — o passo atual pede outra peça";
+    texto = pertenceALinha(alvo)
+      ? "Não possui a peça necessária"
+      : "Não é possível interagir agora";
     duracao = 3000;
   } else {
     texto = `Selecionado: ${nome}`;
@@ -239,9 +257,10 @@ function responderAlvo(alvo, nome) {
   }
 
   // O mecanismo responde junto: a caixa aceita as duas linhas, e o erro da
-  // missão não some atrás do feedback da máquina.
-  if (mecanico) {
-    texto = `${texto}\n${mecanico}`;
+  // missão não some atrás do feedback da máquina. Se as duas frases coincidem
+  // (peça da linha bloqueada por falta de peça), basta uma.
+  if (resposta && resposta !== texto) {
+    texto = `${texto}\n${resposta}`;
     duracao = 4600;
   }
 
@@ -252,12 +271,37 @@ function selecionar() {
   const acerto = ponteiro();
   const { alvo, nome } = descreverAlvo(acerto);
 
-  ui.selecionado(nome);
   responderAlvo(alvo, nome);
+  ui.selecionado(interacoes.descrever(alvo) || nome);
 }
 
 // ---------- MISSÕES ----------
-const missoes = criarMissoes({ ui, painelVR });
+// A seta 3D orienta dentro do headset; a bússola do HUD aponta para a peça
+// mesmo quando ela está atrás da câmera, o caso comum no celular.
+const indicadorPasso = criarIndicadorProximoPasso({
+  scene,
+  camera,
+  elemento: document.querySelector("#next-step"),
+  seta: document.querySelector("#next-step-arrow"),
+  rotulo: document.querySelector("#next-step-label"),
+  obterAlvos: (passo) => {
+    if (passo.idPeca) {
+      return alvos.filter((obj) => obj.userData?.idPeca === passo.idPeca);
+    }
+    if (passo.nome) {
+      return alvos.filter(
+        (obj) => obj.userData?.interativo && obj.userData.nomeEquipamento === passo.nome
+      );
+    }
+    return [];
+  }
+});
+
+const missoes = criarMissoes({
+  ui,
+  painelVR,
+  aoAtualizar: (passo) => indicadorPasso.definirPasso(passo)
+});
 
 // ---------- CONTROLES ----------
 const entrada = criarEntrada();
@@ -283,17 +327,26 @@ const controlesMobile = criarControlesMobile({
   aoSelecionar: selecionar
 });
 
+// Controle Bluetooth (ou celular pareado que se apresente como gamepad).
+// O leitor só é lido dentro do XR; fora dele teclado e tela continuam valendo.
+const leitorGamepad = criarLeitorGamepad({
+  aoMudar: ({ conectado }) =>
+    ui.status(conectado ? "Controle conectado" : "Controle desconectado")
+});
+
 const controlesVR = criarControlesVR({
   renderer,
   scene,
+  camera,
   jogador,
   entrada,
   alvos,
+  gamepad: leitorGamepad,
   esperado: () => missoes.alvoEsperado,
   aoSelecionar: (acerto) => {
     const { alvo, nome } = descreverAlvo(acerto);
-    ui.selecionado(nome);
     responderAlvo(alvo, nome);
+    ui.selecionado(interacoes.descrever(alvo) || nome);
   },
   aoMudarModo: () => ui.status("Modo VR ativo")
 });
@@ -314,6 +367,7 @@ renderer.xr.addEventListener("sessionstart", () => {
   painelVR.definirMissao(missoes.nomeMissao);
   ajustarQualidade("vr");
   iniciado = true;
+  leitorGamepad.reset();
   ui.esconderInstructions();
   ui.status("Sessão VR ativa");
 });
@@ -347,6 +401,7 @@ ajustarQualidade(tipoDispositivo());
 
 carregarMaquinas()
   .then((montadas) => {
+    indicadorPasso.definirPasso(missoes.passo);
     ui.ocultarCarregamento();
     ui.habilitarInicio();
     ui.status(`${montadas.length} máquinas · oficina pronta`);
@@ -374,13 +429,13 @@ const contextoMovimento = {
 function animar() {
   const delta = Math.min(relogio.getDelta(), 0.05);
 
-  furadeira?.atualizar(delta);
+  interacoes.atualizar(delta);
 
   if (iniciado) {
     atualizarJogador(jogador, camera, entrada, delta, contextoMovimento);
 
     if (renderer.xr.isPresenting) {
-      controlesVR.atualizar();
+      controlesVR.atualizar(delta);
     } else if (controlesPC.bloqueado()) {
       // Destaque de mira só no PC, para não pagar raycast extra no celular.
       realcar(resolverAlvo(ponteiro()?.object));
@@ -389,6 +444,8 @@ function animar() {
     }
   }
 
+  indicadorPasso.atualizar(delta, iniciado);
+
   renderer.render(scene, camera);
 }
 
@@ -396,6 +453,7 @@ renderer.setAnimationLoop(animar);
 
 window.__oficina = {
   THREE, scene, camera, jogador, renderer, missoes, alvos, entrada, CATALOGO, painelVR,
+  interacoes, animacoes, indicadorPasso, leitorGamepad, controlesVR,
   get furadeira() { return furadeira; }
 };
 console.log("[Oficina VR SENAI] módulos carregados.");

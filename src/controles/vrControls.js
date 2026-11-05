@@ -1,21 +1,32 @@
 import * as THREE from "three";
 import { XRControllerModelFactory } from "three/addons/webxr/XRControllerModelFactory.js";
-import { escolherAcerto } from "../maquinas.js";
+import { escolherAcerto } from "../cena/maquinas.js";
 
-// Adaptador VR. Gatilho = selecionar o objeto da ponteira. Apertar e soltar o
-// grip = teleportar até o ponto do piso. Analógico esquerdo = locomoção suave.
+const VELOCIDADE_GIRO = 1.9; // rad/s no analógico direito do gamepad
+
+// Adaptador VR. Todos os caminhos de entrada escrevem no mesmo objeto
+// `entrada`, então a locomoção continua sendo resolvida por atualizarJogador():
+//
+// - controller do headset: gatilho seleciona, grip teleporta, analógico anda;
+// - gamepad padrão (Bluetooth ou celular que se apresente como HID): stick
+//   esquerdo anda, stick direito gira o usuário, A/RT seleciona pela mira;
+// - teclado e tela continuam valendo fora do XR, em seus próprios módulos.
 export function criarControlesVR({
   renderer,
   scene,
+  camera,
   jogador,
   entrada,
   alvos,
+  gamepad,
   esperado,
   aoSelecionar,
   aoMudarModo
 }) {
   const raycaster = new THREE.Raycaster();
   const matrizTemporaria = new THREE.Matrix4();
+  const origemMira = new THREE.Vector3();
+  const direcaoMira = new THREE.Vector3();
 
   const fabrica = new XRControllerModelFactory();
   const pilha = [];
@@ -28,6 +39,24 @@ export function criarControlesVR({
   marcador.visible = false;
   scene.add(marcador);
 
+  // Mira do gamepad: onde o botão A/RT vai agir. Fica pendurada na câmera para
+  // acompanhar a cabeça sem precisar de raycast por quadro.
+  const mira = new THREE.Mesh(
+    new THREE.RingGeometry(0.008, 0.014, 20),
+    new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.9,
+      depthTest: false,
+      depthWrite: false
+    })
+  );
+  mira.position.set(0, 0, -1.6);
+  mira.renderOrder = 999;
+  mira.frustumCulled = false;
+  mira.visible = false;
+  camera?.add(mira);
+
   const pisoPlano = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
   const pontoPlano = new THREE.Vector3();
 
@@ -35,6 +64,25 @@ export function criarControlesVR({
     matrizTemporaria.identity().extractRotation(alvo.matrixWorld);
     ray.origin.setFromMatrixPosition(alvo.matrixWorld);
     ray.direction.set(0, 0, -1).applyMatrix4(matrizTemporaria).normalize();
+  }
+
+  function selecionar(acerto, origem) {
+    if (!acerto) return;
+    entrada.origemSelecao = origem;
+    entrada.pedidoSelecao = true;
+    aoSelecionar?.(acerto);
+  }
+
+  // A mira central é o equivalente do olhar no PC: o gamepad aponta com a
+  // cabeça e confirma com um botão.
+  function selecionarPelaMira() {
+    camera.getWorldPosition(origemMira);
+    camera.getWorldDirection(direcaoMira);
+    raycaster.set(origemMira, direcaoMira);
+    selecionar(
+      escolherAcerto(raycaster.intersectObjects(alvos, true), esperado?.()),
+      "gamepad"
+    );
   }
 
   function criarPonteira(alvo) {
@@ -94,29 +142,25 @@ export function criarControlesVR({
     controlador.addEventListener("select", () => {
       if (controlador.userData.apertandoGrip) return;
 
-     apontarRay(raycaster.ray, controlador);
-      const acerto = escolherAcerto(raycaster.intersectObjects(alvos, true), esperado?.());
-
-      if (acerto) {
-        controlador.userData.alvo = acerto.object;
-        entrada.origemSelecao = "controller";
-        entrada.pedidoSelecao = true;
-        aoSelecionar?.(acerto);
-      }
+      apontarRay(raycaster.ray, controlador);
+      selecionar(
+        escolherAcerto(raycaster.intersectObjects(alvos, true), esperado?.()),
+        "controller"
+      );
     });
 
     pilha.push({ controlador, punho });
   }
 
-  function lerAnalogo() {
+  function lerAnalogoXR() {
     let fx = 0;
     let lx = 0;
 
     for (const { controlador } of pilha) {
-      const gamepad = controlador.userData.gamepad;
-      if (!gamepad?.axes) continue;
+      const pad = controlador.userData.gamepad;
+      if (!pad?.axes) continue;
 
-      const [ax = 0, ay = 0, bx = 0, by = 0] = gamepad.axes;
+      const [ax = 0, ay = 0, bx = 0, by = 0] = pad.axes;
       const MAG = 0.22;
 
       // Layout padrão XR: axes[2]/[3] são o analógico esquerdo em muitos
@@ -131,19 +175,32 @@ export function criarControlesVR({
       }
     }
 
-    return { fx: THREE.MathUtils.clamp(fx, -1, 1), lx: THREE.MathUtils.clamp(lx, -1, 1) };
+    return { fx, lx };
   }
 
-  function atualizar() {
-    const { fx, lx } = lerAnalogo();
-    entrada.frente = fx;
-    entrada.lateral = lx;
-    entrada.corrida = false;
+  function atualizar(delta = 0) {
+    const leitura = gamepad?.atualizar?.() ?? null;
+
+    const { fx, lx } = lerAnalogoXR();
+    entrada.frente = THREE.MathUtils.clamp(fx + (leitura?.movimento.frente ?? 0), -1, 1);
+    entrada.lateral = THREE.MathUtils.clamp(lx + (leitura?.movimento.lateral ?? 0), -1, 1);
+    entrada.corrida = Boolean(leitura?.corrida);
+
+    // Girar o rig gira câmera e controllers juntos; a direção de caminhada
+    // acompanha porque atualizarJogador() usa a frente da câmera.
+    if (leitura?.giro) {
+      jogador.rotation.y -= leitura.giro * VELOCIDADE_GIRO * delta;
+    }
+
+    if (leitura?.selecionar) selecionarPelaMira();
+
+    const usarMira = Boolean(leitura) && renderer.xr.isPresenting;
+    if (mira.visible !== usarMira) mira.visible = usarMira;
 
     // Atualiza o marcador de teleporte enquanto o grip está pressionado.
     const ativo = pilha.find(({ controlador }) => controlador.userData.apertandoGrip);
     if (ativo) {
-     apontarRay(raycaster.ray, ativo.controlador);
+      apontarRay(raycaster.ray, ativo.controlador);
       if (raycaster.ray.intersectPlane(pisoPlano, pontoPlano)) {
         marcador.position.copy(pontoPlano).setY(0.02);
         marcador.visible = true;
@@ -159,7 +216,7 @@ export function criarControlesVR({
       const ponteira = controlador.getObjectByName("ponteira");
       if (!ponteira) continue;
 
-     apontarRay(raycaster.ray, controlador);
+      apontarRay(raycaster.ray, controlador);
       const acertos = raycaster.intersectObjects(alvos, true);
       ponteira.scale.z = acertos.length
         ? Math.min(acertos[0].distance, 6)
@@ -173,6 +230,8 @@ export function criarControlesVR({
     dispose() {
       marcador.geometry.dispose();
       marcador.material.dispose();
+      mira.geometry.dispose();
+      mira.material.dispose();
     }
   };
 }

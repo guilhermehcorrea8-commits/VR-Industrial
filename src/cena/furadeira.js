@@ -14,8 +14,10 @@ import * as THREE from "three";
 const DEGRAUS = 3;
 const GIRO_POR_DEGRAU = 0.35; // rad por clique (~20°)
 const CURSO = 0.15; // m de descida da árvore
-const VELOCIDADE_EIXO = 7.5; // rad/s do mandril enquanto desce
+const VELOCIDADE_EIXO = 7.5; // rad/s do mandril enquanto corta
+const VELOCIDADE_LIVRE = 2.2; // rad/s do mandril ligado, sem cortar
 const SUAVIDADE = 6; // 1/s de aproximação do alvo
+const ELEVACAO_MESA = 0.12; // m acima da posição baixa
 
 // O arquivo exporta a árvore já no fundo do curso: a broca nasce embaixo da
 // mesa. Descanso é a árvore levantada (CURSO acima do exportado) e a mesa
@@ -94,7 +96,14 @@ export function criarFuradeira(montada) {
     console.warn(
       "[furadeira] o scene.glb não trouxe as peças do avanço — o manete ficará inerte."
     );
-    return { pronto: false, acionar: () => null, atualizar: () => {} };
+    return {
+      pronto: false,
+      acionar: () => null,
+      atualizar: () => {},
+      definirMotor: () => {},
+      ajustarMesa: () => {},
+      reiniciar: () => {}
+    };
   }
 
   // ---------- ALAVANCA ----------
@@ -154,8 +163,9 @@ export function criarFuradeira(montada) {
   }
 
   // ---------- MESA ----------
+  let grupoMesa = null;
   if (mesaPecas.size) {
-    const grupoMesa = new THREE.Group();
+    grupoMesa = new THREE.Group();
     grupoMesa.name = "Mesa da furadeira";
     grupoMesa.position.y = -QUEDA_DA_MESA;
     conteudo.add(grupoMesa);
@@ -170,9 +180,20 @@ export function criarFuradeira(montada) {
   let angulo = 0;
   let altura = CURSO;
   let giroEixo = 0;
+  let motorLigado = false;
+  let alturaMesa = -QUEDA_DA_MESA;
+  let alvoMesa = alturaMesa;
 
-  function acionar(alvo) {
+  // Quando uma animação futura assume uma ação, o rig continua guardando o
+  // estado (degrau, motor, altura) mas para de escrever a transformação, para
+  // não brigar com os tracks do clipe.
+  let visualAvanco = true;
+  let visualMesa = true;
+
+  function acionar(alvo, { visual = true } = {}) {
     if (alvo?.userData?.idPeca !== "alavanca_avanco") return null;
+
+    visualAvanco = visual;
 
     if (!subindo && degrau >= DEGRAUS) subindo = true;
     else if (subindo && degrau <= 0) subindo = false;
@@ -184,31 +205,68 @@ export function criarFuradeira(montada) {
       : `Avanço manual — broca descendo (${degrau}/${DEGRAUS} do curso)`;
   }
 
+  function definirMotor(ligado, { visual = true } = {}) {
+    motorLigado = Boolean(ligado);
+    visualAvanco = visual;
+  }
+
+  function ajustarMesa(alta, { visual = true } = {}) {
+    alvoMesa = -QUEDA_DA_MESA + (alta ? ELEVACAO_MESA : 0);
+    visualMesa = visual;
+  }
+
+  function reiniciar() {
+    degrau = 0;
+    subindo = false;
+    angulo = 0;
+    altura = CURSO;
+    giroEixo = 0;
+    motorLigado = false;
+    alturaMesa = -QUEDA_DA_MESA;
+    alvoMesa = alturaMesa;
+    visualAvanco = true;
+    visualMesa = true;
+
+    grupoAlavanca.quaternion.identity();
+    grupoArvore.position.y = altura;
+    grupoMandril.rotation.y = giroEixo;
+    if (grupoMesa) grupoMesa.position.y = alturaMesa;
+  }
+
   function atualizar(delta) {
     const anguloAlvo = degrau * GIRO_POR_DEGRAU;
     const alturaAlvo = CURSO - (degrau * CURSO) / DEGRAUS;
 
-    // Gira só o trecho em que a broca está cortando, não na volta.
-    const cortando = alturaAlvo < altura - 1e-4;
+    // Gira só o trecho em que a broca está cortando; em vazio o motor mantém
+    // uma rotação lenta, e desligado o mandril para de girar.
+    const cortando = motorLigado && alturaAlvo < altura - 1e-4;
     const k = 1 - Math.exp(-SUAVIDADE * delta);
 
     angulo += (anguloAlvo - angulo) * k;
     altura += (alturaAlvo - altura) * k;
+    alturaMesa += (alvoMesa - alturaMesa) * k;
 
-    grupoAlavanca.quaternion.setFromAxisAngle(eixo, angulo);
-    grupoArvore.position.y = altura;
+    if (cortando) giroEixo += delta * VELOCIDADE_EIXO;
+    else if (motorLigado) giroEixo += delta * VELOCIDADE_LIVRE;
 
-    if (cortando) {
-      giroEixo += delta * VELOCIDADE_EIXO;
+    if (visualAvanco) {
+      grupoAlavanca.quaternion.setFromAxisAngle(eixo, angulo);
+      grupoArvore.position.y = altura;
       grupoMandril.rotation.y = giroEixo;
     }
+    if (visualMesa && grupoMesa) grupoMesa.position.y = alturaMesa;
   }
 
   return {
     pronto: true,
     acionar,
     atualizar,
+    definirMotor,
+    ajustarMesa,
+    reiniciar,
     get degrau() { return degrau; },
-    get curso() { return `${DEGRAUS - degrau}/${DEGRAUS}`; }
+    get curso() { return `${DEGRAUS - degrau}/${DEGRAUS}`; },
+    get motorLigado() { return motorLigado; },
+    get mesaAlta() { return alvoMesa > -QUEDA_DA_MESA; }
   };
 }

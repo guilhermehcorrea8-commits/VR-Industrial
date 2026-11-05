@@ -232,6 +232,53 @@ kbd {
   visibility: visible;
 }
 
+/* Bússola do próximo passo. A seta gira em torno do próprio eixo e a distância
+   é atualizada no loop; o farol 3D sobre a peça fica invisível fora do campo
+   de visão, então esta é a referência para quem está no celular. */
+#next-step {
+  position: absolute;
+  z-index: 7;
+  left: 50%;
+  bottom: calc(58px + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  max-width: min(92vw, 460px);
+  padding: 7px 14px;
+  transform: translate(-50%, 6px);
+  border: 1px solid #f59e0b80;
+  border-radius: 999px;
+  background: #0c121be6;
+  color: var(--accent-light);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition: 160ms ease;
+  pointer-events: none;
+}
+
+#next-step.visible {
+  transform: translate(-50%, 0);
+  opacity: 1;
+  visibility: visible;
+}
+
+#next-step-arrow {
+  display: inline-block;
+  flex: 0 0 auto;
+  font-size: 15px;
+  line-height: 1;
+  transition: transform 90ms linear;
+}
+
+#next-step-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* Tela inicial */
 
 #instructions {
@@ -415,6 +462,7 @@ body.vr-active #help-panel,
 body.vr-active #bottombar,
 body.vr-active #message,
 body.vr-active #mobile-controls,
+body.vr-active #next-step,
 body.vr-active #instructions,
 body.vr-active #crosshair {
   display: none;
@@ -429,14 +477,16 @@ body.vr-active #crosshair {
     display: flex;
   }
 
+  /* No celular os comandos já estão nos botões da tela: o card de CONTROLES
+     só ocupava espaço e cobria a máquina que o aluno estava mirando. */
   #help-panel {
-    top: 75px;
-    left: 8px;
-    width: 185px;
-    padding: 10px;
+    display: none;
   }
 
-  #help-panel p {
+  #next-step {
+    bottom: calc(168px + env(safe-area-inset-bottom, 0px));
+    max-width: 88vw;
+    padding: 6px 12px;
     font-size: 10px;
   }
 
@@ -490,6 +540,17 @@ body.vr-active #crosshair {
     line-height: 1.35;
   }
 
+  #help-panel {
+    display: none;
+  }
+
+  #next-step {
+    bottom: calc(112px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+@media (max-width: 760px) {
+  /* Janela estreita também não comporta o card de controles ao lado da cena. */
   #help-panel {
     display: none;
   }

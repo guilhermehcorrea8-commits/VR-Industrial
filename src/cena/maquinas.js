@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
+import { RIGS } from "../interacao/rigs.data.js";
 
 // As dez máquinas vêm do scene.glb, que as guarda lado a lado no mesmo arquivo.
 // Cinco das raízes se chamam literalmente "world", então cada máquina é
@@ -17,6 +18,7 @@ export const CATALOGO = [
     x: -4.5, z: -12.4, rotY: 0,
     pecas: [
       ["LeftSlidingDoor", "porta_cnc", "Porta deslizante da CNC", "Abrir a proteção antes de montar a peça"],
+      ["RightSlidingDoor", "porta_cnc", "Porta deslizante da CNC", "Abrir a proteção antes de montar a peça"],
       ["TSlotTable", "mesa_cnc", "Mesa de furos em T", "Fixar a peça na mesa da CNC"],
       ["ControlConsole", "console_cnc", "Console da CNC", "Operar o console de comando"],
       ["TowerGreen", "torre_cnc", "Sinalizador verde da CNC", "Confirmar que a máquina está liberada"],
@@ -37,6 +39,9 @@ export const CATALOGO = [
       ["CarriageHandwheel", "volante_carro_torno", "Volante do carro", "Avançar o carro longitudinal"],
       ["TailstockHandwheel", "volante_contraponto_torno", "Volante do contraponto", "Avançar a pinça do contraponto"],
       ["ChuckGuardTop", "protetor_torno", "Protetor do mandril", "Baixar a proteção antes de ligar"],
+      ["ControlPanel", "painel_torno", "Painel de comando do torno", "Conferir o painel de comando"],
+      ["BotaoLiga", "liga_torno", "Botão de partida do torno", "Ligar o torno com a proteção fechada"],
+      ["BotaoDesliga", "desliga_torno", "Botão de parada do torno", "Parar o torno"],
       ["EmergencyStop", "emergencia_torno", "Parada de emergência do torno", "Acionar a parada de emergência"]
     ]
   },
@@ -51,6 +56,9 @@ export const CATALOGO = [
       ["Motor_Body", "motor_esteira", "Motor da esteira", "Identificar o motor elétrico"],
       ["Gearbox", "redutor_esteira", "Redutor da esteira", "Localizar o redutor de velocidade"],
       ["Photoelectric_Sensor", "sensor_esteira", "Sensor fotoelétrico", "Confirmar o sensor de presença"],
+      ["Start_Button", "liga_esteira", "Botão de partida da esteira", "Ligar o motor da esteira"],
+      ["Stop_Button", "desliga_esteira", "Botão de parada da esteira", "Parar o motor da esteira"],
+      ["Tower_green", "torre_esteira", "Sinalizador verde da esteira", "Confirmar que a esteira está liberada"],
       ["Emergency_Stop", "emergencia_esteira", "Emergência da esteira", "Acionar a emergência da esteira"]
     ]
   },
@@ -72,6 +80,10 @@ export const CATALOGO = [
       ["BeltCoverLid", "tampa_correia", "Tampa da correia", "Abrir a proteção para escolher a rotação"],
       ["MotorBody", "motor_furadeira", "Motor da furadeira", "Identificar o motor e sua plaqueta"],
       ["ControlPanel", "painel_furadeira", "Painel de comando da furadeira", "Ligar a máquina pelo comando"],
+      ["BotaoLiga", "liga_furadeira", "Botão de partida da furadeira", "Ligar o motor da furadeira"],
+      ["BotaoDesliga", "desliga_furadeira", "Botão de parada da furadeira", "Parar o motor da furadeira"],
+      ["BotaoReset", "reset_furadeira", "Botão de reset da furadeira", "Restabelecer o comando"],
+      ["LuzIndicadora", "luz_furadeira", "Luz indicadora da furadeira", "Conferir o estado de energização"],
       ["GuardScreen", "protetor_furadeira", "Protetor acrílico da furadeira", "Conferir a proteção do ponto de furação"]
     ],
     // Corpo móvel do mecanismo, mantido em meshes próprias para poder girar e
@@ -89,6 +101,7 @@ export const CATALOGO = [
     x: 8.0, z: -5.0, rotY: -Math.PI / 2,
     pecas: [
       ["Panel_Door_Left", "porta_clp", "Porta do painel CLP", "Abrir o compartimento de comando"],
+      ["Door_Handle", "porta_clp", "Porta do painel CLP", "Abrir o compartimento de comando"],
       ["HMI_Screen", "ihm_clp", "Interface homem-máquina", "Ligar a IHM do painel"],
       ["CLP_CPU", "cpu_clp", "CPU do CLP", "Verificar o estado do controlador"],
       ["Disjuntor", "disjuntor_clp", "Disjuntor geral", "Desligar a alimentação do painel"],
@@ -124,7 +137,8 @@ export const CATALOGO = [
       ["Tampo_aco_macico", "tampo_bancada_senai", "Tampo da bancada SENAI", "Limpar e nivelar o tampo"],
       ["Morsa1_Corpo", "morsa_bancada_senai", "Morsa da bancada SENAI", "Fixar a peça na morsa"],
       ["Gaveta", "gaveta_bancada_senai", "Gaveta da bancada", "Abrir a gaveta de ferramentas"],
-      ["Porta_armario_esquerda", "armario_bancada_senai", "Porta do armário", "Abrir o armário da bancada"]
+      ["Porta_armario_esquerda", "armario_bancada_senai", "Porta do armário", "Abrir o armário da bancada"],
+      ["Porta_armario_direita", "armario_bancada_senai", "Porta do armário", "Abrir o armário da bancada"]
     ]
   },
   {
@@ -150,6 +164,8 @@ export const CATALOGO = [
       ["Tampo_de_madeira", "tampo_bancada_central", "Tampo da bancada central", "Desobstruir o tampo"],
       ["Morsa_frontal_esquerda_corpo", "morsa_frontal_esquerda", "Morsa frontal esquerda", "Fixar a peça na morsa frontal"],
       ["Gaveta_1_frente", "gaveta_bancada_central", "Gaveta da bancada central", "Abrir a primeira gaveta"],
+      ["Porta_esquerda", "armario_bancada_central", "Porta esquerda do armário", "Abrir o armário da bancada"],
+      ["Porta_direita", "armario_bancada_central", "Porta direita do armário", "Abrir o armário da bancada"],
       ["Lima_chata", "lima_bancada_central", "Lima chata", "Recolher a lima chata"]
     ]
   },
@@ -241,7 +257,10 @@ function identificar(bruto) {
     item,
     mapa,
     visores: new Set(item.visores || []),
-    mecanicas: new Set(item.mecanicas || [])
+    mecanicas: new Set(item.mecanicas || []),
+    // Também ficam fora da mescla as peças que formam mecanismos animáveis:
+    // o rig é montado depois, em src/rigs.js, com pivô tirado da própria caixa.
+    animaveis: new Set((RIGS[item.id] || []).flatMap((def) => def.pecas))
   };
 }
 
@@ -282,7 +301,7 @@ export function montarMaquina(bruto) {
   const reconhecimento = identificar(bruto);
   if (!reconhecimento) return null;
 
-  const { item, mapa, visores, mecanicas } = reconhecimento;
+  const { item, mapa, visores, mecanicas, animaveis } = reconhecimento;
 
   bruto.updateMatrixWorld(true);
 
@@ -332,9 +351,11 @@ export function montarMaquina(bruto) {
     if (visores.has(obj.name) || visores.has(base)) {
       const visor = new THREE.Mesh(g, materialVisor(obj.material));
       visor.name = obj.name;
+      visor.userData.base = base;
       visor.userData.idEquipamento = item.id;
       visor.userData.nomeEquipamento = item.nome;
       visor.userData.atravessavel = true;
+      if (animaveis.has(obj.name) || animaveis.has(base)) visor.userData.animavel = true;
       conteudo.add(visor);
       visoresMontados.push(visor);
       return;
@@ -349,6 +370,23 @@ export function montarMaquina(bruto) {
       movel.castShadow = true;
       movel.receiveShadow = true;
       movel.userData.base = base;
+      movel.userData.idEquipamento = item.id;
+      movel.userData.nomeEquipamento = item.nome;
+      conteudo.add(movel);
+      moveis.push(movel);
+      return;
+    }
+
+    // Peça de mecanismo animável (porta, mandril, carro, balancim...). Vale o
+    // mesmo motivo da mescla acima, mas aqui o agrupamento é feito pelo rig,
+    // que também calcula o pivô. O nome do grupo é o alvo das animações futuras.
+    if (animaveis.has(obj.name) || animaveis.has(base)) {
+      const movel = new THREE.Mesh(g, obj.material);
+      movel.name = obj.name;
+      movel.castShadow = true;
+      movel.receiveShadow = true;
+      movel.userData.base = base;
+      movel.userData.animavel = true;
       movel.userData.idEquipamento = item.id;
       movel.userData.nomeEquipamento = item.nome;
       conteudo.add(movel);

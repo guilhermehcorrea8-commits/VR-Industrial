@@ -71,7 +71,26 @@ const MISSOES = [
   }
 ];
 
-export function criarMissoes({ ui, painelVR }) {
+const IDS_DA_LINHA = new Set();
+const NOMES_DA_LINHA = new Set();
+
+for (const missao of MISSOES) {
+  for (const passo of missao.passos) {
+    if (passo.idPeca) IDS_DA_LINHA.add(passo.idPeca);
+    if (passo.nome) NOMES_DA_LINHA.add(passo.nome);
+  }
+}
+
+// Peça que participa da linha de produção do item (em qualquer etapa). Serve
+// para separar "falta a peça deste passo" de um objeto que simplesmente não
+// aceita interação naquele momento.
+export function pertenceALinha(objeto) {
+  const id = objeto?.userData?.idPeca;
+  const nome = objeto?.userData?.nomeEquipamento;
+  return Boolean((id && IDS_DA_LINHA.has(id)) || (nome && NOMES_DA_LINHA.has(nome)));
+}
+
+export function criarMissoes({ ui, painelVR, aoAtualizar }) {
   let missaoAtual = 0;
   let passoAtual = 0;
   let pontos = 0;
@@ -79,14 +98,17 @@ export function criarMissoes({ ui, painelVR }) {
   const totalPassos = MISSOES.reduce((soma, m) => soma + m.passos.length, 0);
   let feitos = 0;
 
+  function passoCorrente() {
+    return MISSOES[missaoAtual]?.passos[passoAtual] ?? null;
+  }
+
   function titulo() {
     return MISSOES[missaoAtual]?.titulo ?? "Todas as missões concluídas";
   }
 
   function textoPasso() {
-    const missao = MISSOES[missaoAtual];
-    if (!missao) return "Simulação concluída.";
-    return `Toque em: ${missao.passos[passoAtual].alvo}`;
+    const passo = passoCorrente();
+    return passo ? `Toque em: ${passo.alvo}` : "Simulação concluída.";
   }
 
   function publicar() {
@@ -95,6 +117,7 @@ export function criarMissoes({ ui, painelVR }) {
     painelVR?.definirMissao(`${titulo()}`);
     painelVR?.definirPlacar(`${pontos} pts · ${feitos}/${totalPassos}`);
     painelVR?.exibir(textoPasso());
+    aoAtualizar?.(passoCorrente());
   }
 
   function avancar() {
@@ -147,9 +170,11 @@ export function criarMissoes({ ui, painelVR }) {
     reiniciar,
     publicar,
     get pontos() { return pontos; },
-    get alvoEsperado() { return MISSOES[missaoAtual]?.passos[passoAtual]?.idPeca ?? null; },
+    get alvoEsperado() { return passoCorrente()?.idPeca ?? null; },
+    get passo() { return passoCorrente(); },
     get progresso() { return `${feitos}/${totalPassos}`; },
     get nomeMissao() { return titulo(); },
+    pertenceALinha,
     lista: MISSOES
   };
 }
