@@ -60,10 +60,10 @@ export const CATALOGO = [
     assinatura: "QuillHousing",
     x: 7.6, z: -8.5, rotY: -Math.PI / 2,
     pecas: [
-      // O mandril que o aluno alcança é a luva das mordsas (ChuckJawSleeve):
-      // ChuckBody e DrillBit são o eixo e a haste, e agora vivem no punção
-      // móvel (mecanicas) em vez de desaparecer mesclados no cabeçote.
-      ["ChuckJawSleeve", "mandril_furadeira", "Mandril da furadeira", "Fixar a peça no mandril"],
+      // O mandril do modelo atual é o corpo que pende do colarinho (ChuckBody,
+      // Ø4 cm): sem luva de mordsas nem anel separados, é ele a peça que o
+      // aluno alcança — e é também o corpo que gira, ver src/furadeira.js.
+      ["ChuckBody", "mandril_furadeira", "Mandril da furadeira", "Fixar a peça no mandril"],
       ["WorkTableTop", "mesa_furadeira", "Mesa da furadeira", "Regular altura e centro da mesa"],
       // Os três nomes abaixo caem no mesmo idPeca: são as empunhaduras pretas
       // do mesmo manete (FeedGrip_0 de trás, _1 de cima, _2 da frente), e
@@ -72,14 +72,23 @@ export const CATALOGO = [
       ["BeltCoverLid", "tampa_correia", "Tampa da correia", "Abrir a proteção para escolher a rotação"],
       ["MotorBody", "motor_furadeira", "Motor da furadeira", "Identificar o motor e sua plaqueta"],
       ["ControlPanel", "painel_furadeira", "Painel de comando da furadeira", "Ligar a máquina pelo comando"],
+      // Os três botões do painel são o comando da máquina: verde liga, vermelho
+      // desliga e amarelo repõe a árvore no topo do curso. Ficam como peças
+      // próprias porque é neles que o mecanismo reage — ver src/furadeira.js.
+      ["BotaoLiga", "botao_liga_furadeira", "Botão verde de ligação", "Ligar o eixo da furadeira"],
+      ["BotaoDesliga", "botao_desliga_furadeira", "Botão vermelho de desligamento", "Desligar o eixo da furadeira"],
+      ["BotaoReset", "botao_reset_furadeira", "Botão de reset", "Repor a árvore na posição inicial"],
       ["GuardScreen", "protetor_furadeira", "Protetor acrílico da furadeira", "Conferir a proteção do ponto de furação"]
     ],
     // Corpo móvel do mecanismo, mantido em meshes próprias para poder girar e
-    // descer. As empunhaduras já estão em `pecas`; o resto é engolido pela
-    // mescla se não for listado aqui.
+    // descer. As empunhaduras e o mandril já estão em `pecas`; o resto é
+    // engolido pela mescla se não for listado aqui. As luzes do painel entram
+    // porque precisam de material próprio para acender; DrillBit continua na
+    // lista porque é ela a primeira opção de giro quando um reexport a trouxer.
     mecanicas: [
       "FeedHub", "FeedSpoke",
-      "QuillChrome", "SpindleCollar", "ChuckBody", "ChuckLowerRing", "DrillBit"
+      "QuillChrome", "SpindleCollar", "DrillBit",
+      "LuzIndicadora"
     ]
   },
   {

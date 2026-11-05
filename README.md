@@ -35,8 +35,8 @@ src/
   materials.js      — texturas procedurais (concreto, tijolo, reboco, tela...)
   galpao.js         — galpão: paredes, telhão, treliças, portão, corredor
   maquinas.js       — CATALOGO + divisão e montagem do GLB + regra de seleção
-  furadeira.js      — mecanismo da alavanca de avanço (giro, curso do punção, eixo)
-  missoes.js        — 6 missões / 29 passos, pontuação e progresso
+  furadeira.js      — alavanca, curso da árvore, rotação do eixo, botões e luzes do painel
+  missoes.js        — 6 missões / 31 passos, pontuação e progresso
   ui.js             — contratos de DOM + painel 3D para VR
   input.js          — jogador, entrada (teclado/toque/XR) e colisão AABB
   controls/
@@ -99,7 +99,7 @@ meshes próprias, com `userData.interativo`, `idPeca`, `idEquipamento`,
 mescladas por material** (`mergeGeometries`, geometria assentada em
 `applyMatrix4(matrixWorld)`), o que derruba o número de draw calls de mais de
 mil para algumas centenas — essencial para o Quest. Resultado medido em
-execução: **64 peças de missão, 195 alvos de raycast, 10 máquinas**.
+execução: **67 peças de missão, 195 alvos de raycast, 10 máquinas**.
 
 Peças listadas em `CATALOGO[].mecanicas` também ficam fora da mescla, mas sem
 `interativo`: são corpo de mecanismo (o cubo e os raios da alavanca, o punção e
@@ -110,7 +110,7 @@ las pelo nome mesmo com sufixo numérico.
 
 Algumas peças precisam deixar a mira passar: sem isso, o acrílico da porta do
 painel CLP (exportado **opaco**, com o `alphaMode` perdido na exportação)
-selava CPU, disjuntores e relés, e o protetor da furadeira escondia o mandril.
+selava CPU, disjuntores e relés.
 
 - `CATALOGO[].visores` nomeia as meshes que recebem material translúcido
   (`materialVisor`: `transparent`, `opacity 0.26`, `depthWrite: false`,
@@ -119,7 +119,7 @@ selava CPU, disjuntores e relés, e o protetor da furadeira escondia o mandril.
   `GuardScreen`) marca `userData.atravessavel` automaticamente;
 - `escolherAcerto(acertos, idEsperado)` pega o primeiro acerto não atravessável
   e, se ele for um visor, aceita um alvo do **mesmo equipamento** até 0,3 m
-  atrás dele. É por isso que a mira chega ao mandril através do protetor.
+  atrás dele. É por isso que a mira chega ao disjuntor através do vidro da porta.
 
 ## Seleção e missões
 
@@ -130,7 +130,7 @@ selava CPU, disjuntores e relés, e o protetor da furadeira escondia o mandril.
   máquina na mira).
 
 `src/missoes.js` guarda as 6 missões — reconhecimento de segurança, furadeira,
-CNC, torno, painel CLP e ajustagem — num total de **29 passos**. Acerto vale
+CNC, torno, painel CLP e ajustagem — num total de **31 passos**. Acerto vale
 **+100**, erro **-15** (o placar não cai abaixo de zero). O HUD, o painel 3D em
 VR e a mensagem flutuante são atualizados pelo mesmo `publicar()`.
 `missoes.alvoEsperado` expõe a peça do passo atual, e é ela que a tolerância de
@@ -138,23 +138,53 @@ atravessar visor usa.
 
 ## A furadeira em funcionamento
 
-`src/furadeira.js` é o único mecanismo animado do projeto. Clicar em qualquer
-uma das três empunhaduras pretas do manete — `FeedGrip_0` (atrás), `FeedGrip_1`
-(cima), `FeedGrip_2` (frente), todas com `idPeca = alavanca_avanco` — gira o
-conjunto do cubo em torno do eixo dos raios e desce a árvore **um degrau por
-clique**, três degraus até o fundo; no fim do curso o clique seguinte inverte o
-sentido e a mola devolve a árvore. O mandril (`ChuckBody`, `ChuckLowerRing`,
-`ChuckJawSleeve`, `DrillBit`) gira **só no trecho em que está cortando**.
+`src/furadeira.js` é o único mecanismo animado do projeto e imita a máquina
+real em três tempos:
+
+- **avanço** — clicar em qualquer uma das três empunhaduras pretas do manete
+  (`FeedGrip_0` atrás, `FeedGrip_1` em cima, `FeedGrip_2` na frente, todas com
+  `idPeca = alavanca_avanco`) gira o conjunto do cubo em torno do eixo dos raios
+  **~36° por clique** — mais de um quarto de volta no curso inteiro, e a caixa
+  de raycast acompanha a empunhadura porque ela é a própria malha, agora dentro
+  do grupo que gira — e desce a árvore **um degrau por clique**, três degraus
+  até o fundo. Os degraus não são iguais: **cada clique desce 3% mais que o
+  anterior** — 5,00 cm, 5,15 cm e 5,30 cm, 15,46 cm de curso no total. No fim do
+  curso o clique seguinte inverte o sentido;
+- **comando** — o eixo só gira com o **botão verde** (`BotaoLiga`) ligado, para
+  no **vermelho** (`BotaoDesliga`) e o **amarelo** (`BotaoReset`) devolve a
+  árvore à posição inicial, levantando a broca. O rotor entra em regime com
+  inércia a **~600 rpm** (63 rad/s), a rotação de trabalho de uma broca de
+  verdade, e, depois de desligar, derruba a rotação até parar. A
+  alavanca desce a árvore ligada ou não, porque o avanço é mecânico — o que muda
+  é que, desligada, a broca empurra o material e não corta;
+- **luzes do painel** — `LuzIndicadora_0` (verde) acende com a máquina ligada e
+  `LuzIndicadora_1` (amarela) com ela desligada, sempre uma de cada vez. As duas
+  estão em `CATALOGO.furadeira.mecanicas` para saírem da mescla com malha
+  própria, e o módulo clona o material de cada uma: no arquivo as duas
+  compartilham a cor do botão verde e a do aviso amarelo da carenagem, então sem
+  o clone acender uma luz acenderia meia máquina.
+
+**Só o corpo da broca gira, e gira no próprio eixo**: o centro de giro vem da
+caixa dele. O modelo atual só traz `ChuckBody` pendurado no colarinho — a broca
+`DrillBit` e a luva de mordsas `ChuckJawSleeve` saíram da exportação — e ele é
+concentrico ao punção (menos de 1 mm de desvio), então é ele o corpo que roda.
+O colarinho e o punção apenas descem, e ficam absolutamente estáveis: medido no
+navegador, o centro da peça que gira não se desloca 0,000 mm enquanto o ângulo
+passa por 5,00 → 1,33 → 3,85 rad.
 
 Nada no módulo usa coordenadas decoradas: o pivô é o centro da caixa do
-`FeedHub`, o eixo é o produto vetorial de dois raios e o centro de giro do
-mandril vem da caixa do `ChuckBody`.
+`FeedHub`, o eixo do manete é o produto vetorial de dois raios e o centro de
+giro vem da caixa do corpo que roda — a caixa do `DrillBit` quando um reexport
+o trouxer de volta, senão a do `ChuckBody`, que é o mandril da missão 2. Os três
+botões saíram da mescla do corpo para `CATALOGO.furadeira.pecas`, o que também os
+colocou na missão 2: a sequência passa a ser mesa → protetor → mandril → painel
+→ reset → botão verde → alavanca.
 
-O `scene.glb` exporta a árvore já no fim do curso — a broca nasce embaixo da
-mesa. Por isso o descanso levanta a árvore 15 cm e a mesa desce 18 cm (altura
-normal de bancada de furadeira): assim o corte acontece **na** superfície da
-mesa em vez de dentro dela. Os dois grupos são montados no carregamento, antes
-de qualquer clique.
+O `scene.glb` exporta a árvore já no fim do curso, então o descanso a levanta o
+curso inteiro (15,46 cm) e a mesa desce 18 cm — altura normal de bancada de
+furadeira. Medido no navegador, no fundo do curso a ponta da haste para 1,3 cm
+acima das mordentes da morsa, que é onde a peça fica presa. Os dois grupos são
+montados no carregamento, antes de qualquer clique.
 
 ## Caixas de mensagem
 
