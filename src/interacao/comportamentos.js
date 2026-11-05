@@ -434,7 +434,6 @@ const furadeira = {
 
   iniciar(inst) {
     inst.furadeira?.definirMotor(false);
-    inst.luz("luz_furadeira", "apagado");
   },
 
   descricao(inst, idPeca) {
@@ -448,10 +447,12 @@ const furadeira = {
 
   pecas: {
     painel_furadeira(inst) {
-      return furadeira.pecas.liga_furadeira(inst);
+      return inst.estado.ligada
+        ? "Painel de comando — máquina ligada; use o botão vermelho para parar"
+        : "Painel de comando — use o botão verde para ligar a máquina";
     },
 
-    liga_furadeira(inst) {
+    botao_liga_furadeira(inst) {
       const e = inst.estado;
 
       if (e.ligada) return bloqueado("A furadeira já está ligada");
@@ -460,26 +461,25 @@ const furadeira = {
       e.ligada = true;
       const tocou = inst.animar("ligar_motor");
       inst.furadeira?.definirMotor(true, { visual: !tocou });
-      inst.luz("luz_furadeira", "verde");
       return "Furadeira ligada — mandril em rotação";
     },
 
-    desliga_furadeira(inst) {
+    botao_desliga_furadeira(inst) {
       const e = inst.estado;
       if (!e.ligada) return bloqueado("A furadeira já está desligada");
 
       e.ligada = false;
       const tocou = inst.animar("desligar_motor");
       inst.furadeira?.definirMotor(false, { visual: !tocou });
-      inst.luz("luz_furadeira", "apagado");
       return "Furadeira desligada";
     },
 
-    reset_furadeira(inst) {
-      inst.animar("reset_comando");
-      return inst.estado.ligada
-        ? "Comando restabelecido — motor segue ligado"
-        : "Comando restabelecido — máquina pronta";
+    botao_reset_furadeira(inst) {
+      const tocou = inst.animar("reset_comando");
+      const repôs = inst.furadeira?.reporArvore({ visual: !tocou }) ?? false;
+      return repôs
+        ? "Botão amarelo — a árvore voltou ao topo do curso"
+        : "Botão amarelo — a árvore já está no topo do curso";
     },
 
     alavanca_avanco(inst, alvo) {

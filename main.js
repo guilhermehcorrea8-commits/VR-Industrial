@@ -348,7 +348,7 @@ const controlesVR = criarControlesVR({
     responderAlvo(alvo, nome);
     ui.selecionado(interacoes.descrever(alvo) || nome);
   },
-  aoMudarModo: () => ui.status("Modo VR ativo")
+  aoMudarModo: () => ui.status("Controle VR conectado")
 });
 
 // ---------- XR ----------

@@ -55,8 +55,8 @@ export function criarUI() {
       if (el.selected) el.selected.textContent = texto;
     },
 
-    placar(pontos, total) {
-      if (el.placar) el.placar.textContent = `${pontos} / ${total}`;
+    placar(pontos, feitos, total) {
+      if (el.placar) el.placar.textContent = `${pontos} pts · ${feitos}/${total}`;
     },
 
     missao(texto) {

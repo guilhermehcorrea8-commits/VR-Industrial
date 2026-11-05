@@ -22,8 +22,10 @@ const MISSOES = [
       { alvo: "Mesa da furadeira", idPeca: "mesa_furadeira" },
       { alvo: "Protetor acrílico da furadeira", idPeca: "protetor_furadeira" },
       { alvo: "Mandril da furadeira", idPeca: "mandril_furadeira" },
-      { alvo: "Alavanca de avanço", idPeca: "alavanca_avanco" },
-      { alvo: "Painel de comando da furadeira", idPeca: "painel_furadeira" }
+      { alvo: "Painel de comando da furadeira", idPeca: "painel_furadeira" },
+      { alvo: "Botão de reset, para a broca voltar ao topo", idPeca: "botao_reset_furadeira" },
+      { alvo: "Botão verde de ligação", idPeca: "botao_liga_furadeira" },
+      { alvo: "Alavanca de avanço", idPeca: "alavanca_avanco" }
     ]
   },
   {
@@ -108,12 +110,12 @@ export function criarMissoes({ ui, painelVR, aoAtualizar }) {
 
   function textoPasso() {
     const passo = passoCorrente();
-    return passo ? `Toque em: ${passo.alvo}` : "Simulação concluída.";
+    return passo ? `Selecione: ${passo.alvo}` : "Simulação concluída.";
   }
 
   function publicar() {
     ui.missao?.(`${titulo()} — ${textoPasso()}`);
-    ui.placar?.(pontos, totalPassos);
+    ui.placar?.(pontos, feitos, totalPassos);
     painelVR?.definirMissao(`${titulo()}`);
     painelVR?.definirPlacar(`${pontos} pts · ${feitos}/${totalPassos}`);
     painelVR?.exibir(textoPasso());

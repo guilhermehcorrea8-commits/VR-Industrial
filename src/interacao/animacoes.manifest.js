@@ -56,6 +56,6 @@
 //   BancadaSENAI_Porta_Esquerda · BancadaSENAI_Porta_Direita
 //   BancadaCentral_Porta_Esquerda · BancadaCentral_Porta_Direita
 //   Prensa_Ram · Prensa_Balancim
-//   (furadeira) Alavanca de avanço · Árvore · Mandril · Mesa da furadeira
+//   (furadeira) Alavanca de avanço · Árvore · Broca · Mesa da furadeira
 
 export const MANIFESTO = {};

@@ -152,7 +152,7 @@ export const RIGS = {
 
 // Nomes de nós que os clipes futuros podem animar sem tocar na interação.
 // A furadeira tem rig próprio, montado em src/furadeira.js:
-//   Alavanca de avanço · Árvore · Mandril · Mesa da furadeira
+//   Alavanca de avanço · Árvore · Broca · Mesa da furadeira
 export const NOS_DE_ANIMACAO = Object.fromEntries(
   Object.entries(RIGS).map(([id, defs]) => [id, defs.map((def) => def.nome)])
 );

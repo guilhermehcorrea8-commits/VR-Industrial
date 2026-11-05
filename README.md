@@ -49,7 +49,7 @@ src/
     animacoes.manifest.js — catálogo dos clipes que serão produzidos
     indicador.js    — seta 3D, caixa fina e bússola do próximo passo
   missoes/
-    missoes.js      — 6 missões / 29 passos, pontuação e progresso
+    missoes.js      — 6 missões / 31 passos, pontuação e progresso
   interface/
     ui.js           — contratos de DOM + painel 3D para VR
   controles/
@@ -147,14 +147,15 @@ selava CPU, disjuntores e relés, e o protetor da furadeira escondia o mandril.
 ## Seleção e missões
 
 - **PC**: PointerLock; clique seleciona o que está na mira central.
-- **Mobile**: botão **OLHAR / TOCAR** dispara a mesma seleção pelo raycast da mira.
+- **Mobile**: arrastar a tela olha; tocar na tela dispara a mesma seleção pelo
+  raycast da mira (não há botão de olhar separado).
 - **VR**: gatilho do controller seleciona na ponta do raio; segurar **grip**
   mostra o alvo no chão e soltá-lo teleporta (sem teleporte acidental quando há
   máquina na mira). Com um **gamepad** conectado, o stick esquerdo anda, o
   direito gira e **A/RT** seleciona pela mira central.
 
 `src/missoes/missoes.js` guarda as 6 missões — reconhecimento de segurança, furadeira,
-CNC, torno, painel CLP e ajustagem — num total de **29 passos**. Acerto vale
+CNC, torno, painel CLP e ajustagem — num total de **31 passos**. Acerto vale
 **+100**, erro **-15** (o placar não cai abaixo de zero). O HUD, o painel 3D em
 VR e a mensagem flutuante são atualizados pelo mesmo `publicar()`.
 `missoes.alvoEsperado` expõe a peça do passo atual, e é ela que a tolerância de
@@ -192,7 +193,7 @@ flutuante fica sobre a peça-alvo e uma **caixa de linhas finas** envolve o pont
 de interação (ambas visíveis dentro do headset, desenhadas por cima do corpo da
 máquina). Uma bússola no HUD aponta para a peça e mostra a distância, mesmo
 quando ela está atrás da câmera. No celular o card de **CONTROLES** fica oculto
-— os botões de movimento e de olhar já estão na tela.
+— os botões de movimento já estão na tela e o olhar é o arrasto sobre a cena.
 
 Quando uma interação é recusada, o HUD usa duas frases fixas:
 
@@ -245,7 +246,8 @@ sobrevivem a `interacoes.reiniciar()`:
   corta o movimento; o sinalizador verde acompanha o motor.
 - **Furadeira** — ligar exige tampa da correia fechada; o avanço manual funciona
   com o motor desligado, mas a broca só gira com o motor ligado; a mesa sobe e
-  desce pelo comando; o mandril gira em vazio e acelera ao cortar.
+  desce pelo comando; o rotor ganha e perde rotação com inércia, e o botão
+  amarelo repõe a árvore no topo do curso.
 - **CLP** — o disjuntor só é acessível com a porta aberta; a porta trava
   energizada; o relé de segurança e a emergência governam CPU e IHM.
 - **Bancadas e prensa** — morsas, gavetas, armários e ferramentas são
@@ -282,7 +284,7 @@ nós de rig abaixo, que ficam dentro do grupo da máquina:
 | Bancada SENAI | `BancadaSENAI_Porta_Esquerda`, `BancadaSENAI_Porta_Direita` |
 | Bancada central | `BancadaCentral_Porta_Esquerda`, `BancadaCentral_Porta_Direita` |
 | Prensa | `Prensa_Ram`, `Prensa_Balancim` |
-| Furadeira | `Alavanca de avanço`, `Árvore`, `Mandril`, `Mesa da furadeira` |
+| Furadeira | `Alavanca de avanço`, `Árvore`, `Broca`, `Mesa da furadeira` |
 
 As peças preservadas fora dos rigs (morsas, gavetas, ferramentas, botões)
 também podem receber tracks pelo nome do nó do `scene.glb`. A lista completa de
@@ -290,8 +292,9 @@ ações emitidas por máquina está em `src/interacao/animacoes.manifest.js`; os
 nós, em `src/interacao/rigs.data.js`.
 
 A furadeira mantém o estado (degrau, motor, altura da mesa) mesmo quando um
-clipe assume o visual: `acionar`, `definirMotor` e `ajustarMesa` aceitam
-`{ visual: false }`, então os clipes futuros não brigam com o rig provisório.
+clipe assume o visual: `acionar`, `definirMotor`, `ajustarMesa` e `reporArvore`
+aceitam `{ visual: false }`, então os clipes futuros não brigam com o rig
+provisório.
 
 ## A furadeira em funcionamento
 
@@ -299,19 +302,19 @@ clipe assume o visual: `acionar`, `definirMotor` e `ajustarMesa` aceitam
 sistema de interação. Clicar em qualquer uma das três empunhaduras pretas do
 manete — `FeedGrip_0` (atrás), `FeedGrip_1` (cima), `FeedGrip_2` (frente), todas
 com `idPeca = alavanca_avanco` — gira o conjunto do cubo em torno do eixo dos
-raios e desce a árvore **um degrau por clique**, três degraus até o fundo; no
-fim do curso o clique seguinte inverte o sentido e a mola devolve a árvore. O
-mandril (`ChuckBody`, `ChuckLowerRing`, `ChuckJawSleeve`, `DrillBit`) gira
-**lento com o motor ligado** e acelera enquanto a broca está cortando. A mesa
-sobe/desce 12 cm pelo comando `mesa_furadeira`, e a luz indicadora acompanha o
-estado do motor.
+raios e desce a árvore **um degrau por clique**, três degraus até o fundo, cada
+um 3% mais fundo que o anterior; no fim do curso o clique seguinte sobe um
+degrau de cada vez. Só o `ChuckBody` gira, no próprio eixo, com inércia ao ligar
+e ao desligar; o colarinho e o punção apenas descem. A mesa sobe/desce 12 cm
+pelo comando `mesa_furadeira`, e as duas luzes do painel mostram o estado: verde
+com o eixo ligado, amarela com a máquina desligada.
 
 Nada no módulo usa coordenadas decoradas: o pivô é o centro da caixa do
 `FeedHub`, o eixo é o produto vetorial de dois raios e o centro de giro do
 mandril vem da caixa do `ChuckBody`.
 
 O `scene.glb` exporta a árvore já no fim do curso — a broca nasce embaixo da
-mesa. Por isso o descanso levanta a árvore 15 cm e a mesa desce 18 cm (altura
+mesa. Por isso o descanso levanta a árvore 15,45 cm e a mesa desce 18 cm (altura
 normal de bancada de furadeira): assim o corte acontece **na** superfície da
 mesa em vez de dentro dela. Os dois grupos são montados no carregamento, antes
 de qualquer clique.
@@ -359,7 +362,7 @@ resumo de rigs e ações; nós não reconhecidos pelo `CATALOGO` geram um
 | Correr | `Shift` | — | LB / clique do stick esquerdo |
 | Olhar | mouse (PointerLock) | arrastar a tela | mover a cabeça |
 | Girar o corpo | — | — | stick direito do gamepad |
-| Selecionar | clique | **OLHAR / TOCAR** | gatilho do controller ou A/RT do gamepad |
+| Selecionar | clique | toque na tela | gatilho do controller ou A/RT do gamepad |
 | Teleporte | — | — | segurar **grip**, mirar o chão, soltar |
 | Liberar mouse | `Esc` | — | — |
-| Entrar em VR | botão **Enter VR** na barra superior | (não suportado) | — |
+| Entrar em VR | botão **Enter VR** no canto inferior direito | (não suportado) | — |
