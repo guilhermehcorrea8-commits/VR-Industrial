@@ -1,0 +1,398 @@
+import * as THREE from "three";
+import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
+
+// Máquinas da oficina. Cada construtor devolve um Group já ancorado no piso
+// (Y=0) com as partes interativas marcadas, para as missões poderem apontar
+// para elas sem depender de posição absoluta.
+
+function marca(mesh, id, rotulo, descricao) {
+  mesh.userData.interativo = true;
+  mesh.userData.idPeca = id;
+  mesh.userData.nomeEquipamento = rotulo;
+  mesh.userData.descricao = descricao;
+  return mesh;
+}
+
+function maquinaBase(mats, nome, id) {
+  const grupo = new THREE.Group();
+  grupo.name = nome;
+  grupo.userData.idEquipamento = id;
+  grupo.userData.nomeEquipamento = nome;
+  return grupo;
+}
+
+// Caixa com arestas: nas fotos as máquinas têm quina viva, não blob.
+function bloco(pai, mats, w, h, d, x, y, z, material) {
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
+  mesh.position.set(x, y, z);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  pai.add(mesh);
+  return mesh;
+}
+
+// Faixa zebrada preto/amarelo, presente na máquina da foto 4.
+function faixaZebra(pai, texZebra, w, h, d, x, y, z) {
+  const textura = texZebra.clone();
+  textura.needsUpdate = true;
+  textura.repeat.set(Math.max(1, w / 0.12), Math.max(1, h / 0.12));
+
+  const mesh = new THREE.Mesh(
+    new THREE.BoxGeometry(w, h, d),
+    new THREE.MeshStandardMaterial({ map: textura, roughness: 0.7 })
+  );
+  mesh.position.set(x, y, z);
+  mesh.castShadow = true;
+  pai.add(mesh);
+  return mesh;
+}
+
+function painelComTela(pai, mats, x, y, z, rotY = 0) {
+  const painel = new THREE.Group();
+  painel.position.set(x, y, z);
+  painel.rotation.y = rotY;
+  pai.add(painel);
+
+  bloco(painel, mats, 0.62, 0.5, 0.09, 0, 0, 0, mats.metalEscuro);
+  const tela = bloco(painel, mats, 0.42, 0.26, 0.03, 0, 0.07, 0.06, mats.preto);
+  bloco(painel, mats, 0.36, 0.2, 0.01, 0, 0.07, 0.075, mats.azulClaro);
+
+  // Botões de comando: verde, vermelho (emergência) e amarelo.
+  bloco(painel, mats, 0.07, 0.07, 0.05, -0.16, -0.15, 0.06, mats.verde);
+  const emergencia = bloco(painel, mats, 0.11, 0.11, 0.06, 0, -0.15, 0.06, mats.vermelho);
+  bloco(painel, mats, 0.07, 0.07, 0.05, 0.16, -0.15, 0.06, mats.amarelo);
+
+  return { painel, tela, emergencia };
+}
+
+export function criarBancada(mats) {
+  const g = maquinaBase(mats, "Bancada de ajustagem", "bancada");
+
+  // Corpo azul com tampo de madeira, como na foto 1.
+  bloco(g, mats, 2.2, 0.85, 0.85, 0, 0.425, 0, mats.azul);
+  bloco(g, mats, 2.3, 0.09, 0.95, 0, 0.895, 0, mats.madeira);
+  bloco(g, mats, 2.24, 0.05, 0.06, 0, 0.86, 0.46, mats.metalEscuro);
+
+  // Gavetas com puxadores.
+  for (let i = 0; i < 3; i++) {
+    const gaveta = bloco(g, mats, 0.66, 0.3, 0.05, -0.72 + i * 0.72, 0.5, 0.44, mats.azulClaro);
+    bloco(g, mats, 0.3, 0.04, 0.05, -0.72 + i * 0.72, 0.5, 0.48, mats.metal);
+    marca(gaveta, `gaveta_bancada_${i}`, "Gaveta da bancada", "Abrir a gaveta de ferramentas");
+  }
+
+  // Morsa na ponta do tampo.
+  const morsa = new THREE.Group();
+  morsa.position.set(0.75, 0.94, 0.15);
+  g.add(morsa);
+  bloco(morsa, mats, 0.3, 0.14, 0.22, 0, 0.07, 0, mats.metalEscuro);
+  bloco(morsa, mats, 0.08, 0.12, 0.2, -0.14, 0.2, 0, mats.metal);
+  const fixa = bloco(morsa, mats, 0.08, 0.12, 0.2, 0.12, 0.2, 0, mats.metal);
+  bloco(morsa, mats, 0.04, 0.04, 0.34, 0.2, 0.2, 0, mats.metal);
+  marca(fixa, "morsa_bancada", "Morsa da bancada", "Fixar a peça na morsa");
+
+  // Painel de ferramentas atrás.
+  bloco(g, mats, 1.8, 0.9, 0.06, -0.1, 1.45, -0.42, mats.metalEscuro);
+  for (let i = 0; i < 6; i++) {
+    bloco(g, mats, 0.06, 0.42, 0.05, -0.85 + i * 0.3, 1.42, -0.36, i % 2 ? mats.amarelo : mats.metal);
+  }
+
+  return g;
+}
+
+export function criarTorno(mats) {
+  const g = maquinaBase(mats, "Torno mecânico", "torno");
+
+  bloco(g, mats, 2.4, 0.75, 0.9, 0, 0.375, 0, mats.azul);
+  bloco(g, mats, 2.5, 0.12, 1.0, 0, 0.81, 0, mats.metalEscuro);
+
+  // Cabeçote com mandril.
+  bloco(g, mats, 0.8, 0.7, 0.75, -0.75, 1.22, 0, mats.branco);
+  const mandril = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.2, 0.3, 20), mats.metal);
+  mandril.rotation.z = Math.PI / 2;
+  mandril.position.set(-0.25, 1.22, 0);
+  mandril.castShadow = true;
+  g.add(mandril);
+  marca(mandril, "mandril_torno", "Mandril do torno", "Apertar o mandril do torno");
+
+  // Carro e castelo.
+  bloco(g, mats, 0.35, 0.22, 0.5, 0.25, 1.0, 0, mats.metalEscuro);
+  const portaFaca = bloco(g, mats, 0.16, 0.3, 0.16, 0.42, 1.16, 0, mats.metal);
+  marca(portaFaca, "porta_facas", "Porta-facas", "Posicionar a ferramenta de corte");
+
+  const volante = new THREE.Mesh(new THREE.TorusGeometry(0.14, 0.035, 8, 20), mats.vermelho);
+  volante.position.set(0.25, 0.92, 0.32);
+  volante.castShadow = true;
+  g.add(volante);
+  marca(volante, "volante_torno", "Volante do carro", "Avançar o carro longitudinal");
+
+  // Contraponto.
+  bloco(g, mats, 0.5, 0.45, 0.5, 0.85, 1.08, 0, mats.branco);
+
+  // Protetor de cavaco.
+  const protetor = bloco(g, mats, 1.1, 0.5, 0.04, 0.05, 1.25, 0.44, mats.vidro);
+  marca(protetor, "protetor_torno", "Protetor de cavaco", "Fechar a proteção do torno");
+
+  // Caixa de comando.
+  const { emergencia } = painelComTela(g, mats, -0.95, 1.55, 0.42, 0.35);
+  marca(emergencia, "emergencia_torno", "Botão de emergência", "Acionar a parada de emergência");
+
+  return g;
+}
+
+export function criarCNC(mats, texZebra) {
+  const g = maquinaBase(mats, "Centro de usinagem CNC", "cnc");
+
+  bloco(g, mats, 2.3, 0.35, 1.7, 0, 0.175, 0, mats.metalEscuro);
+  bloco(g, mats, 2.1, 2.0, 1.5, 0, 1.35, 0, mats.branco);
+
+  // Porta deslizante com vidro de observação.
+  const porta = bloco(g, mats, 1.15, 1.5, 0.06, -0.42, 1.3, 0.79, mats.branco);
+  bloco(g, mats, 0.85, 0.9, 0.03, -0.42, 1.45, 0.83, mats.vidro);
+  bloco(g, mats, 0.06, 0.4, 0.06, 0.08, 1.3, 0.84, mats.metal);
+  marca(porta, "porta_cnc", "Porta da célula CNC", "Abrir a porta de proteção da CNC");
+
+  // Faixas zebradas nas colunas, idênticas à foto 4.
+  faixaZebra(g, texZebra, 0.16, 2.0, 0.06, 0.98, 1.35, 0.78);
+  faixaZebra(g, texZebra, 0.16, 2.0, 0.06, -1.0, 1.35, 0.78);
+
+  // Torre / árvore.
+  bloco(g, mats, 0.5, 0.7, 0.5, 0.2, 2.05, 0, mats.metalEscuro);
+  const arvore = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.6, 16), mats.metal);
+  arvore.position.set(0.2, 1.55, 0);
+  arvore.castShadow = true;
+  g.add(arvore);
+
+  const { painel, tela } = painelComTela(g, mats, 1.35, 1.5, 0.55, -0.6);
+  bloco(g, mats, 0.1, 0.9, 0.1, 1.3, 0.9, 0.5, mats.metalEscuro);
+  marca(tela, "hmi_cnc", "Painel HMI da CNC", "Selecionar o programa de usinagem");
+  marca(painel.children[0], "console_cnc", "Console da CNC", "Operar o console da CNC");
+
+  // Sinalizador luminoso (torre de aviso).
+  const torre = new THREE.Group();
+  torre.position.set(-1.05, 2.45, -0.5);
+  g.add(torre);
+  for (const [i, cor] of ["vermelho", "amarelo", "verde"].entries()) {
+    const lampada = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.09, 0.09, 0.14, 16),
+      mats[cor]
+    );
+    lampada.position.y = i * 0.15;
+    lampada.castShadow = true;
+    torre.add(lampada);
+  }
+  marca(torre.children[2], "sinalizador_cnc", "Sinalizador verde", "Confirmar que a máquina está liberada");
+
+  return g;
+}
+
+export function criarPainelCLP(mats) {
+  const g = maquinaBase(mats, "Painel de automação CLP", "clp");
+
+  bloco(g, mats, 1.5, 2.1, 0.5, 0, 1.05, 0, mats.branco);
+  bloco(g, mats, 1.55, 0.12, 0.56, 0, 2.14, 0, mats.metalEscuro);
+  bloco(g, mats, 1.4, 0.25, 0.42, 0, 0.12, 0.06, mats.metalEscuro);
+
+  // Duas portas de armário.
+  const portaEsq = bloco(g, mats, 0.68, 1.6, 0.05, -0.36, 1.1, 0.27, mats.aluminio);
+  const portaDir = bloco(g, mats, 0.68, 1.6, 0.05, 0.36, 1.1, 0.27, mats.aluminio);
+  bloco(g, mats, 0.05, 0.22, 0.06, -0.05, 1.1, 0.31, mats.metal);
+  bloco(g, mats, 0.05, 0.22, 0.06, 0.05, 1.1, 0.31, mats.metal);
+  marca(portaEsq, "porta_clp_potencia", "Porta de força do CLP", "Abrir o compartimento de potência");
+  marca(portaDir, "porta_clp_logica", "Porta de comando do CLP", "Inspecionar os módulos do CLP");
+
+  // IHM na porta frontal.
+  bloco(g, mats, 0.46, 0.34, 0.04, 0.36, 1.72, 0.3, mats.metalEscuro);
+  const ihm = bloco(g, mats, 0.36, 0.24, 0.02, 0.36, 1.72, 0.33, mats.azulClaro);
+  marca(ihm, "ihm_clp", "Interface homem-máquina", "Ligar a IHM do painel");
+
+  // Bornes e relés visíveis na parte superior.
+  for (let i = 0; i < 10; i++) {
+    bloco(g, mats, 0.07, 0.14, 0.1, -0.6 + i * 0.13, 1.9, 0.24, i % 2 ? mats.amarelo : mats.azul);
+  }
+
+  // Eletroduto descendo até o piso.
+  bloco(g, mats, 0.1, 1.0, 0.1, -0.72, 0.5, -0.1, mats.metalEscuro);
+
+  return g;
+}
+
+export function criarEsteira(mats) {
+  const g = maquinaBase(mats, "Esteira transportadora", "esteira");
+
+  const comprimento = 3.6;
+  bloco(g, mats, comprimento, 0.12, 0.72, 0, 0.78, 0, mats.metalEscuro);
+  bloco(g, mats, comprimento, 0.06, 0.8, 0, 0.86, 0, mats.preto);
+
+  // Laterais e roletes.
+  bloco(g, mats, comprimento, 0.14, 0.05, 0, 0.95, 0.4, mats.aluminio);
+  bloco(g, mats, comprimento, 0.14, 0.05, 0, 0.95, -0.4, mats.aluminio);
+
+  const roletes = [];
+  for (let i = 0; i < 9; i++) {
+    const rolete = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.07, 0.07, 0.68, 12),
+      mats.metal
+    );
+    rolete.rotation.x = Math.PI / 2;
+    rolete.position.set(-comprimento / 2 + 0.25 + i * 0.4, 0.72, 0);
+    rolete.castShadow = true;
+    g.add(rolete);
+    roletes.push(rolete);
+  }
+
+  // Pernas.
+  for (const x of [-comprimento / 2 + 0.25, comprimento / 2 - 0.25]) {
+    for (const z of [-0.3, 0.3]) {
+      bloco(g, mats, 0.1, 0.72, 0.1, x, 0.36, z, mats.azul);
+    }
+  }
+
+  // Motor e redutor na ponta.
+  const motor = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.19, 0.42, 18), mats.azul);
+  motor.rotation.z = Math.PI / 2;
+  motor.position.set(comprimento / 2 - 0.1, 0.55, -0.62);
+  motor.castShadow = true;
+  g.add(motor);
+  marca(motor, "motor_esteira", "Motorredutor da esteira", "Identificar o motor da esteira");
+  bloco(g, mats, 0.34, 0.34, 0.34, comprimento / 2 - 0.1, 0.55, -0.35, mats.metalEscuro);
+
+  const paro = bloco(g, mats, 0.12, 0.12, 0.06, -comprimento / 2 + 0.2, 1.05, 0.44, mats.vermelho);
+  marca(paro, "emergencia_esteira", "Parada de emergência da esteira", "Acionar a emergência da esteira");
+
+  g.userData.roletes = roletes;
+  return g;
+}
+
+export const CONSTRUTORES = {
+  bancada: criarBancada,
+  torno: criarTorno,
+  cnc: (mats, tex) => criarCNC(mats, tex),
+  clp: criarPainelCLP,
+  esteira: criarEsteira
+};
+
+// ---------------- scene.glb (furadeira) ----------------
+
+// A furadeira do scene.glb tem 1157 meshes. Cada um é uma draw call, o que
+// derruba a taxa de quadros no Quest. Mesclamos tudo por material, exceto as
+// peças nomeadas que as missões precisam alcançar individualmente.
+const PRESERVAR = [
+  "ChuckBody", "ChuckJawSleeve", "DrillBit", "QuillHousing",
+  "WorkTableTop", "TableLockHandle", "FeedGrip_0", "FeedGrip_1",
+  "FeedHub", "BeltCoverLid", "MotorBody", "SpindleCollar", "Column"
+];
+
+function atributosCompativeis(geometria) {
+  const g = geometria.index ? geometria.toNonIndexed() : geometria.clone();
+
+  if (!g.attributes.normal) g.computeVertexNormals();
+  if (!g.attributes.uv) {
+    g.setAttribute("uv", new THREE.Float32BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2));
+  }
+
+  // Remove atributos que impedem a mesclagem.
+  for (const nome of Object.keys(g.attributes)) {
+    if (!["position", "normal", "uv"].includes(nome)) g.deleteAttribute(nome);
+  }
+  g.groups = [];
+  return g;
+}
+
+export function otimizarFuradeira(modelo) {
+  modelo.updateMatrixWorld(true);
+  const raiz = new THREE.Box3();
+
+  const porMaterial = new Map();
+  const preservados = [];
+
+  modelo.traverse((obj) => {
+    if (!obj.isMesh) return;
+
+    const nomeBase = (obj.name || "").replace(/_\d+$/, "");
+    const devePreservar = PRESERVAR.some((p) => obj.name === p || nomeBase === p);
+
+    if (devePreservar) {
+      preservados.push(obj);
+      return;
+    }
+
+    const chave = obj.material.uuid;
+    if (!porMaterial.has(chave)) porMaterial.set(chave, { material: obj.material, geometrias: [] });
+
+    const geometria = atributosCompativeis(obj.geometry);
+    geometria.applyMatrix4(obj.matrixWorld);
+    porMaterial.get(chave).geometrias.push(geometria);
+  });
+
+  const grupo = new THREE.Group();
+  grupo.name = modelo.name;
+  grupo.userData = { ...modelo.userData };
+
+  let mescladas = 0;
+  for (const { material, geometrias } of porMaterial.values()) {
+    if (!geometrias.length) continue;
+
+    const unica = geometrias.length === 1
+      ? geometrias[0]
+      : mergeGeometries(geometrias, false);
+
+    if (!unica) continue;
+
+    const mesh = new THREE.Mesh(unica, material);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    mesh.name = "CorpoMesclado";
+    grupo.add(mesh);
+    mescladas += geometrias.length;
+  }
+
+  // Preservados mantêm a transformada de mundo, já que o grupo fica na origem.
+  for (const obj of preservados) {
+    obj.geometry = atributosCompativeis(obj.geometry);
+    obj.geometry.applyMatrix4(obj.matrixWorld);
+    obj.matrixWorld.identity();
+    obj.matrixAutoUpdate = false;
+    obj.position.set(0, 0, 0);
+    obj.rotation.set(0, 0, 0);
+    obj.scale.set(1, 1, 1);
+    obj.updateMatrix();
+    grupo.add(obj);
+  }
+
+  grupo.updateMatrixWorld(true);
+  raiz.setFromObject(grupo);
+  console.log(
+    `[furadeira] ${mescladas + preservados.length} meshes -> ${grupo.children.length} draw calls`
+  );
+
+  return { grupo, caixa: raiz };
+}
+
+// Marca as peças-chave da furadeira para as missões, usando os nomes de node
+// reais do arquivo (BaseCasting, ChuckBody, DrillBit, FeedGrip...).
+export function marcarPecasFuradeira(grupo) {
+  const rotulos = {
+    ChuckBody: ["mandril_furadeira", "Mandril da furadeira", "Fixar a peça no mandril"],
+    DrillBit: ["broca_furadeira", "Broca da furadeira", "Instalar a broca"],
+    WorkTableTop: ["mesa_furadeira", "Mesa da furadeira", "Regular a mesa de trabalho"],
+    TableLockHandle: ["trava_mesa", "Trava da mesa", "Soltar a trava da mesa"],
+    FeedGrip_0: ["alavanca_avanco", "Alavanca de avanço", "Acionar o avanço da furadeira"],
+    BeltCoverLid: ["tampa_correia", "Tampa da correia", "Abrir a proteção da correia"],
+    MotorBody: ["motor_furadeira", "Motor da furadeira", "Identificar o motor"],
+    Column: ["coluna_furadeira", "Coluna da furadeira", "Verificar a coluna"]
+  };
+
+  const encontrados = [];
+  grupo.traverse((obj) => {
+    const alvo = rotulos[obj.name];
+    if (!alvo) return;
+    const [id, rotulo, descricao] = alvo;
+    obj.userData.interativo = true;
+    obj.userData.idPeca = id;
+    obj.userData.nomeEquipamento = rotulo;
+    obj.userData.descricao = descricao;
+    encontrados.push(obj);
+  });
+
+  return encontrados;
+}
