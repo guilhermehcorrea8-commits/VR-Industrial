@@ -23,7 +23,7 @@ function lista(valor) {
   return Array.isArray(valor) ? valor : [valor];
 }
 
-export function criarSistemaInteracoes({ animacoes } = {}) {
+export function criarSistemaInteracoes({ animacoes, aoInteragir } = {}) {
   const instancias = new Map();
   let totalMecanismos = 0;
 
@@ -123,7 +123,9 @@ export function criarSistemaInteracoes({ animacoes } = {}) {
     const handler = inst.def.pecas?.[idPeca];
     if (!handler) return null;
 
-    return handler(inst, alvo) ?? null;
+    const resposta = handler(inst, alvo) ?? null;
+    aoInteragir?.({ instancia: inst, id, idPeca, resposta, alvo });
+    return resposta;
   }
 
   function descrever(alvo) {

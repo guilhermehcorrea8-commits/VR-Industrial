@@ -1,11 +1,10 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 
-  <meta name="theme-color" content="#10151c">
+  <meta name="theme-color" content="#0a0f15">
   <meta name="description" content="Simulador industrial 3D para treinamento profissional SENAI.">
 
   <title>Oficina VR SENAI</title>
@@ -26,6 +25,7 @@
       <div class="loading-spinner"></div>
       <h1>OFICINA VR SENAI</h1>
       <p id="loading-message">Preparando o ambiente industrial...</p>
+      <div class="loading-bar"><span></span></div>
     </div>
   </div>
 
@@ -36,17 +36,27 @@
         <span>SENAI · TREINAMENTO INDUSTRIAL</span>
       </div>
       <div id="status">Inicializando...</div>
+      <button id="btn-pausa" type="button" aria-label="Pausar treinamento" title="Pausar (ESC)">❚❚</button>
     </header>
 
-    <section id="instructions">
-      <div class="start-card">
-        <span class="eyebrow">SIMULADOR INDUSTRIAL 3D</span>
-        <h2>Oficina SENAI</h2>
-        <p>Explore o galpão e observe os equipamentos industriais.</p>
-        <button id="start-btn" type="button" disabled>
-          CARREGANDO...
-        </button>
-        <small>PC: WASD + mouse · Celular: toque na tela · VR: controller ou gamepad</small>
+    <section id="hud" aria-live="polite">
+      <div class="objective-card">
+        <div class="objective-head">
+          <span id="obj-missao">Oficina</span>
+          <b id="obj-contador"></b>
+        </div>
+        <p id="obj-texto">Carregando objetivo…</p>
+        <small id="obj-dica" class="vazia"></small>
+        <div class="progress-track" aria-hidden="true"><span id="progress-fill"></span></div>
+        <div class="objective-meters">
+          <span id="hud-pontos">0 pts</span>
+          <span id="hud-precisao">100% precisão</span>
+        </div>
+      </div>
+
+      <div id="inventory">
+        <span class="inventory-title">FERRAMENTAS</span>
+        <div id="inventory-slots"></div>
       </div>
     </section>
 
@@ -60,7 +70,7 @@
       <p>Celular: arraste para olhar, toque para selecionar</p>
       <p>VR: analógico anda · gatilho seleciona · grip teleporta</p>
       <p>Gamepad: stick esq. anda · dir. gira · A seleciona</p>
-      <p><kbd>ESC</kbd> Liberar o mouse</p>
+      <p><kbd>ESC</kbd> Pausar · liberar o mouse</p>
     </section>
 
     <div id="message" role="status" aria-live="polite"></div>
@@ -84,11 +94,170 @@
     <footer id="bottombar">
       <span id="mission">Missão: carregando…</span>
       <span id="score">0 pts · 0/0</span>
+      <span id="modo">MODO LIVRE</span>
       <span id="selected-object">Nenhuma máquina selecionada</span>
     </footer>
 
     <div id="vr-button-container"></div>
+
+    <div id="toast-area" aria-live="polite"></div>
+    <div id="score-float" aria-hidden="true"></div>
   </div>
+
+  <!-- MENU PRINCIPAL -->
+  <section id="screen-menu" class="screen hidden">
+    <div class="menu-layout">
+      <div class="menu-card">
+        <span class="eyebrow">SIMULADOR INDUSTRIAL 3D · SENAI CAXIAS DO SUL</span>
+        <h1 class="menu-logo">OFICINA <em>VR</em></h1>
+        <p class="menu-sub">
+          Treinamento guiado de operação e segurança em máquinas industriais.
+          Cumpra os passos de cada módulo, evite erros e receba a avaliação do instrutor.
+        </p>
+        <p id="menu-progresso" class="menu-progresso">0/6 treinamentos concluídos</p>
+
+        <div class="menu-actions">
+          <button id="btn-tour" class="btn btn-primary" type="button">INICIAR TOUR COMPLETO</button>
+          <button id="btn-treinos" class="btn" type="button">ESCOLHER TREINAMENTO</button>
+          <button id="btn-livre" class="btn" type="button">MODO LIVRE</button>
+          <button id="btn-config" class="btn btn-ghost" type="button">CONFIGURAÇÕES</button>
+        </div>
+
+        <small class="menu-foot">PC: WASD + mouse · Celular: toque na tela · VR: controller ou gamepad</small>
+      </div>
+
+      <aside class="menu-side">
+        <div class="menu-side-card">
+          <strong>COMO FUNCIONA</strong>
+          <ul>
+            <li><b>1</b><span>Escolha um treinamento ou o tour completo.</span></li>
+            <li><b>2</b><span>Leia o briefing e localize a peça destacada.</span></li>
+            <li><b>3</b><span>Selecione os componentes na ordem correta.</span></li>
+            <li><b>4</b><span>Receba medalha e pontuação por precisão.</span></li>
+          </ul>
+        </div>
+        <div class="menu-side-card destaque">
+          <strong>SEGURANÇA PRIMEIRO</strong>
+          <p>Proteções, paradas de emergência e sinalizadores fazem parte do roteiro de todas as máquinas.</p>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- SELEÇÃO DE TREINAMENTO -->
+  <section id="screen-treinos" class="screen hidden">
+    <div class="panel wide">
+      <header class="panel-head">
+        <div>
+          <span class="eyebrow">SELECIONE UM MÓDULO</span>
+          <h2>Treinamentos</h2>
+        </div>
+        <button id="btn-treinos-voltar" class="btn btn-ghost" type="button">VOLTAR</button>
+      </header>
+
+      <div id="lista-treinos" class="train-grid"></div>
+
+      <footer class="panel-foot">
+        <span>Quanto mais rápido e sem erros, maior a medalha.</span>
+        <button id="btn-tour-select" class="btn" type="button">TOUR COMPLETO</button>
+      </footer>
+    </div>
+  </section>
+
+  <!-- BRIEFING -->
+  <section id="screen-briefing" class="screen hidden">
+    <div class="panel briefing">
+      <span id="briefing-etapa" class="eyebrow">MÓDULO 1 DE 6</span>
+      <h2 id="briefing-titulo">Treinamento</h2>
+      <p id="briefing-objetivo" class="briefing-objetivo"></p>
+      <p id="briefing-texto" class="briefing-texto"></p>
+      <ol id="briefing-passos" class="briefing-passos"></ol>
+      <p id="briefing-dica" class="briefing-dica"></p>
+      <div class="panel-actions">
+        <button id="btn-briefing-voltar" class="btn btn-ghost" type="button">VOLTAR</button>
+        <button id="btn-briefing-iniciar" class="btn btn-primary" type="button">INICIAR TREINAMENTO</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- AVALIAÇÃO -->
+  <section id="screen-avaliacao" class="screen hidden">
+    <div class="panel avaliacao">
+      <span id="aval-medalha" class="medal ouro">OURO</span>
+      <h2 id="aval-titulo">Treinamento concluído</h2>
+
+      <p class="aval-pontos"><b id="aval-pontos">0</b><span>pontos</span></p>
+
+      <div class="stats-grid">
+        <div><b id="aval-acertos">0</b><span>acertos</span></div>
+        <div><b id="aval-erros">0</b><span>erros</span></div>
+        <div><b id="aval-precisao">100%</b><span>precisão</span></div>
+        <div><b id="aval-tempo">0s</b><span>tempo</span></div>
+      </div>
+
+      <p id="aval-melhor" class="aval-melhor"></p>
+
+      <div class="panel-actions">
+        <button id="btn-aval-repetir" class="btn btn-ghost" type="button">REPETIR</button>
+        <button id="btn-aval-menu" class="btn btn-ghost" type="button">MENU</button>
+        <button id="btn-aval-proximo" class="btn btn-primary" type="button">ESCOLHER TREINO</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- PAUSA -->
+  <section id="screen-pausa" class="screen hidden">
+    <div class="panel small">
+      <span class="eyebrow">TREINAMENTO EM ANDAMENTO</span>
+      <h2>Pausa</h2>
+      <div class="menu-actions">
+        <button id="btn-pausa-continuar" class="btn btn-primary" type="button">CONTINUAR</button>
+        <button id="btn-pausa-reiniciar" class="btn" type="button">REINICIAR TREINAMENTO</button>
+        <button id="btn-pausa-treinos" class="btn" type="button">TROCAR TREINAMENTO</button>
+        <button id="btn-pausa-config" class="btn btn-ghost" type="button">CONFIGURAÇÕES</button>
+        <button id="btn-pausa-menu" class="btn btn-ghost" type="button">SAIR PARA O MENU</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- CONFIGURAÇÕES -->
+  <section id="screen-config" class="screen hidden">
+    <div class="panel config">
+      <header class="panel-head">
+        <div>
+          <span class="eyebrow">PREFERÊNCIAS</span>
+          <h2>Configurações</h2>
+        </div>
+      </header>
+
+      <div class="config-row">
+        <label for="conf-volume">Volume <span id="conf-volume-valor">70%</span></label>
+        <input id="conf-volume" type="range" min="0" max="100" step="1" value="70">
+      </div>
+
+      <div class="config-row">
+        <label for="conf-sensibilidade">Sensibilidade do mouse <span id="conf-sensibilidade-valor">100%</span></label>
+        <input id="conf-sensibilidade" type="range" min="20" max="220" step="5" value="100">
+      </div>
+
+      <div class="config-row">
+        <label for="conf-qualidade">Qualidade gráfica</label>
+        <select id="conf-qualidade">
+          <option value="alta">Alta — oclusão + bloom</option>
+          <option value="equilibrada">Equilibrada</option>
+          <option value="baixa">Baixa — desempenho</option>
+        </select>
+      </div>
+
+      <label class="config-check"><input id="conf-sombras" type="checkbox" checked><span>Sombras dinâmicas</span></label>
+      <label class="config-check"><input id="conf-mudo" type="checkbox"><span>Silenciar áudio</span></label>
+
+      <div class="panel-actions">
+        <button id="btn-conf-tela" class="btn btn-ghost" type="button">TELA CHEIA</button>
+        <button id="btn-conf-fechar" class="btn btn-primary" type="button">VOLTAR</button>
+      </div>
+    </div>
+  </section>
 
   <script type="module" src="./main.js"></script>
 </body>

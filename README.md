@@ -2,8 +2,10 @@
 
 Simulador de treinamento industrial para realidade virtual. Reproduz o galpão da
 metalurgia do **SENAI Mecatrônica — Caxias do Sul** a partir de cinco fotos de
-referência e carrega as máquinas reais do arquivo `scene.glb`, com missões
-guiadas, pontuação e seleção por mira em três modos de uso: PC, celular e VR.
+referência e carrega as máquinas reais do arquivo `scene.glb`. O jogo tem menu
+principal, seleção de treinamentos, tour completo, modo livre, HUD de objetivos,
+pontuação com penalidades, medalhas, avaliação final, pausa, configurações e
+áudio procedural — em PC, celular e VR.
 
 ## Como executar
 
@@ -26,8 +28,8 @@ Terceiras dependências vêm por CDN (Three.js **r180** via `importmap` em
 ## Estrutura
 
 ```
-index.html          — DOM (HUD, tela de carga, controles mobile), importmap
-style.css           — todo o estilo
+index.html          — DOM (telas, HUD, tela de carga, controles mobile), importmap
+style.css           — telas, HUD, cards, estados de menu/VR e responsividade
 main.js             — montagem da cena, loop, seleção, ligação entre módulos
 scene.glb           — as 10 máquinas (1,6 MB)
 src/
@@ -37,6 +39,7 @@ src/
   cena/
     materials.js    — texturas procedurais (concreto, tijolo, reboco, tela...)
     galpao.js       — galpão: paredes, telhão, treliças, portão, corredor
+    atmosfera.js    — IBL (RoomEnvironment), poeira e composer GTAO + bloom
     maquinas.js     — CATALOGO + divisão e montagem do GLB + regra de seleção
     furadeira.js    — mecanismo da alavanca de avanço (giro, curso do punção, eixo)
   interacao/
@@ -51,7 +54,10 @@ src/
   missoes/
     missoes.js      — 6 missões / 31 passos, pontuação e progresso
   interface/
-    ui.js           — contratos de DOM + painel 3D para VR
+    ui.js           — contratos de DOM, HUD (objetivo, progresso, inventário) e painel 3D
+    menus.js        — menu principal, treinos, briefing, avaliação, pausa e configurações
+  audio/
+    sons.js         — WebAudio procedural: ambiente, motores, cliques e alertas
   controles/
     computerControls.js — WASD + PointerLock
     mobileControls.js   — botões de tela, arrastar-para-olhar, botão de seleção
@@ -155,13 +161,53 @@ selava CPU, disjuntores e relés, e o protetor da furadeira escondia o mandril.
   direito gira e **A/RT** seleciona pela mira central.
 
 `src/missoes/missoes.js` guarda as 6 missões — reconhecimento de segurança, furadeira,
-CNC, torno, painel CLP e ajustagem — num total de **31 passos**. Acerto vale
-**+100**, erro **-15** (o placar não cai abaixo de zero). O HUD, o painel 3D em
-VR e a mensagem flutuante são atualizados pelo mesmo `publicar()`.
+CNC, torno, painel CLP e ajustagem — num total de **31 passos**. Cada acerto
+vale **100 pontos** mais um bônus de rapidez de até **50** (cai linearmente ao
+longo de 20 s); cada erro desconta **15** e o placar não cai abaixo de zero. A
+precisão é `acertos / (acertos + erros)`. O HUD, o painel 3D em VR e a
+mensagem flutuante são atualizados pelo mesmo `publicar()`.
 `missoes.alvoEsperado` expõe a peça do passo atual, e é ela que a tolerância de
 atravessar visor usa.
 
-### Controle no VR (gamepad)
+## Modos de jogo e progressão
+
+- **Treino** — uma missão por vez, escolhida na lista. Ao concluir, a tela de
+  avaliação mostra pontos, acertos, erros, precisão, tempo, medalha e recorde.
+- **Tour completo (campanha)** — as 6 missões em sequência. A avaliação de cada
+  etapa oferece **PRÓXIMA ETAPA**; na última, a tela mostra o total acumulado
+  do tour e grava um recorde próprio.
+- **Livre** — a oficina inteira sem objetivos de missão. O cartão de HUD vira
+  “Exploração livre”, sem contador de passos; o placar global `0/31` continua
+  disponível na barra inferior.
+
+Medalhas: **ouro** com 0 erros e precisão ≥ 99%, **prata** com precisão ≥ 85%,
+**bronze** nos demais casos. Recordes e configurações ficam em
+`localStorage` (`oficinaVR.melhores.v1` e `oficinaVR.config.v1`); o menu
+principal mostra quantos treinamentos foram concluídos e o recorde do tour.
+
+## HUD, pausa e configurações
+
+A partida tem cartão de objetivo com missão, passo, dica, barra de progresso,
+pontos e precisão; inventário de ferramentas (peça, chave, lima, martelo,
+paquímetro, grampo C) com o slot da ferramenta do passo aceso; indicador 3D do
+próximo alvo; toasts e pontuação flutuante.
+
+O botão de pausa da barra superior ou `Esc`/`P` abre a pausa (também usada
+para soltar o mouse). De lá é possível continuar, reiniciar, trocar de treino, abrir
+configurações ou voltar ao menu. As configurações ajustam volume, sensibilidade
+do mouse/toque, sombras, qualidade gráfica (alta/equilibrada/baixa), mudo e tela
+cheia; tudo é aplicado na hora e persistido.
+
+## Áudio
+
+`src/audio/sons.js` sintetiza todo o som com WebAudio — nenhum arquivo externo.
+Há ruído marrom de ambiente, motores por máquina (CNC em ciclo, torno girando,
+esteira, furadeira e CLP energizado), cliques de interface, acerto, erro, alerta
+de recusa, passo concluído e acorde de conclusão. O contexto só nasce no
+primeiro gesto do usuário (política de autoplay); pausar corta motores e
+ambiente, mas mantém os cliques de menu.
+
+## Controle no VR (gamepad)
 
 `src/controles/gamepad.js` lê qualquer controle que a **Gamepad API** exponha no
 aparelho que está rodando a experiência: um controle Bluetooth pareado com o
@@ -186,7 +232,7 @@ abre uma página web **não** vira gamepad do outro aparelho sem um servidor de
 retransmissão; nesse caso, o caminho suportado é o controle Bluetooth/HID
 pareado diretamente ao aparelho que transmite a experiência.
 
-### Próximo passo e feedback
+## Próximo passo e feedback
 
 `src/interacao/indicador.js` acompanha o passo atual da missão: uma seta
 flutuante fica sobre a peça-alvo e uma **caixa de linhas finas** envolve o ponto
@@ -333,26 +379,43 @@ A mesma frase sai por três caminhos, e cada um se ajusta sozinho:
   escreve nos dois destinos (`ui.ligarPainel()`); a DOM fica escondida em XR
   pelo `body.vr-active`.
 
-## Qualidade por dispositivo
+## Gráficos e qualidade por dispositivo
+
+A ambientação combina **IBL** (PMREM a partir de `RoomEnvironment`, intensidade
+0,55 e `envMapIntensity` 0,7 nos materiais), luzes industriais com sombras,
+**poeira** em partículas aditivas, e o pós-processamento de `src/cena/atmosfera.js`:
+`RenderPass → GTAO (oclusão) → UnrealBloom → OutputPass`.
 
 `src/nucleo/render.js` define `ORCAMENTOS` para `desktop`, `mobile` e `vr` (pixel
-ratio máximo, sombras ligadas e tamanho do shadow map). O modo é reavaliado ao
-entrar e ao sair do XR por `aplicarQualidade()` — que também descarta o shadow
-map antigo e força `shadowMap.needsUpdate`, sem o que os shaders não são
-recompilados ao desligar as sombras.
+ratio máximo, sombras ligadas e tamanho do shadow map). A qualidade escolhida
+pode ser **alta** (composer completo com GTAO), **equilibrada** (bloom, sem
+GTAO) ou **baixa** (render direto, sem composer). O mobile é limitado a
+equilibrada; em XR o composer é contornado e a qualidade cai para baixa, porque
+o runtime compõe as duas vistas. O modo é reavaliado ao entrar e ao sair do XR
+por `aplicarQualidade()` — que também descarta o shadow map antigo e força
+`shadowMap.needsUpdate`, sem o que os shaders não são recompilados ao desligar
+as sombras.
 
 ## Depuração
 
 `window.__oficina` expõe `{ THREE, scene, camera, jogador, renderer, missoes,
 alvos, entrada, CATALOGO, painelVR, interacoes, animacoes, indicadorPasso,
-leitorGamepad, controlesVR, furadeira }` no console do navegador (a furadeira é
-getter: só ganha valor depois do carregamento das máquinas).
+leitorGamepad, controlesVR, audio, atmosfera, menus, simularAlvo,
+iniciarSessao }` no console, além dos getters `furadeira`, `posProcessamento`,
+`jogando` e `pausado` (só ganham valor depois do carregamento das máquinas).
+`simularAlvo("mesa_furadeira")` acerta o alvo como se o jogador tivesse
+selecionado a peça (aceita `idPeca` ou o nome do equipamento) — útil para testar
+missões sem caminhar até a máquina.
 `interacoes.estado(id)`, `interacoes.descrever(alvo)` e `interacoes.resumo()`
 mostram o estado de cada máquina; `interacoes.reiniciar()` devolve todas ao
 estado inicial. `leitorGamepad.id` mostra o controle detectado. O console também
 imprime, por máquina, `meshes originais → draw calls`, dimensões em metros e o
 resumo de rigs e ações; nós não reconhecidos pelo `CATALOGO` geram um
 `console.warn`.
+
+> **Cache ao editar.** O `http.server` do Python não envia `Cache-Control`; após
+> alterar módulos, recarregue com **Ctrl+F5** (ou use outro porta/origem) para
+> não testar uma versão antiga em cache.
 
 ## Controles
 
@@ -364,5 +427,12 @@ resumo de rigs e ações; nós não reconhecidos pelo `CATALOGO` geram um
 | Girar o corpo | — | — | stick direito do gamepad |
 | Selecionar | clique | toque na tela | gatilho do controller ou A/RT do gamepad |
 | Teleporte | — | — | segurar **grip**, mirar o chão, soltar |
+| Pausar | `Esc` / `P` / botão de pausa | botão de pausa | encerrar a sessão XR abre a pausa |
 | Liberar mouse | `Esc` | — | — |
-| Entrar em VR | botão **Enter VR** no canto inferior direito | (não suportado) | — |
+| Entrar em VR | botão **Enter VR** no menu principal | (não suportado) | — |
+
+O botão de VR fica visível no menu principal e no canto inferior direito
+durante o jogo. Entrar no
+headset sem ter iniciado um modo abre automaticamente o **modo livre**; ao sair
+da sessão, a qualidade, a poeira e a pose do jogador são restauradas e a pausa
+aparece se havia uma missão em andamento.

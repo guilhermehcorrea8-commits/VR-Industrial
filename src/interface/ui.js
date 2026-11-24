@@ -5,13 +5,30 @@ const IDS = {
   loadingMessage: "#loading-message",
   status: "#status",
   message: "#message",
-  startBtn: "#start-btn",
-  instructions: "#instructions",
   selected: "#selected-object",
   placar: "#score",
   missao: "#mission",
-  vrContainer: "#vr-button-container"
+  vrContainer: "#vr-button-container",
+
+  objMissao: "#obj-missao",
+  objContador: "#obj-contador",
+  objTexto: "#obj-texto",
+  objDica: "#obj-dica",
+  progressoFill: "#progress-fill",
+  hudPontos: "#hud-pontos",
+  hudPrecisao: "#hud-precisao",
+  inventario: "#inventory-slots",
+  modo: "#modo",
+  toastArea: "#toast-area",
+  scoreFloat: "#score-float"
 };
+
+// IDs que podem faltar sem quebrar a experiência (HUD reduzida, VR, etc.).
+const OPCIONAIS = new Set([
+  "placar", "missao", "objMissao", "objContador", "objTexto", "objDica",
+  "progressoFill", "hudPontos", "hudPrecisao", "inventario", "modo",
+  "toastArea", "scoreFloat"
+]);
 
 export function criarUI() {
   const el = {};
@@ -19,7 +36,7 @@ export function criarUI() {
 
   for (const [chave, seletor] of Object.entries(IDS)) {
     el[chave] = document.querySelector(seletor);
-    if (!el[chave] && chave !== "placar" && chave !== "missao") faltando.push(seletor);
+    if (!el[chave] && !OPCIONAIS.has(chave)) faltando.push(seletor);
   }
 
   if (faltando.length) {
@@ -28,6 +45,7 @@ export function criarUI() {
 
   let timerMensagem = null;
   let painel = null;
+  let assinaturaInventario = "";
 
   const ui = {
     elementos: el,
@@ -63,26 +81,97 @@ export function criarUI() {
       if (el.missao) el.missao.textContent = texto;
     },
 
+    // Cartão de objetivo: missão, passo, dica, barra de progresso e os dois
+    // medidores (pontos e precisão) atualizados no mesmo lugar.
+    objetivo(dados = {}) {
+      const { passo, total, feitos } = dados;
+
+      if (el.objMissao) el.objMissao.textContent = dados.missao ?? "Oficina";
+      if (el.objContador) {
+        el.objContador.textContent = dados.modo === "livre" || !total
+          ? ""
+          : `${Math.min(feitos, total)}/${total}`;
+      }
+
+      if (el.objTexto) {
+        if (dados.concluido) el.objTexto.textContent = "Treinamento concluído — veja a avaliação.";
+        else if (passo?.alvo) el.objTexto.textContent = `Objetivo: ${passo.alvo}`;
+        else if (dados.modo === "livre") el.objTexto.textContent = "Modo livre — explore a oficina.";
+        else el.objTexto.textContent = "Selecione o componente indicado.";
+      }
+
+      if (el.objDica) {
+        el.objDica.textContent = passo?.dica ? `DICA · ${passo.dica}` : "";
+        el.objDica.classList.toggle("vazia", !passo?.dica);
+      }
+
+      if (el.progressoFill) {
+        const pct = total ? Math.min(100, (feitos / total) * 100) : 0;
+        el.progressoFill.style.width = `${pct}%`;
+      }
+
+      if (el.hudPontos) el.hudPontos.textContent = `${dados.pontos ?? 0} pts`;
+      if (el.hudPrecisao) el.hudPrecisao.textContent = `${dados.precisao ?? 100}% precisão`;
+
+      document.body.classList.toggle("modo-livre", dados.modo === "livre");
+      document.body.classList.toggle("modo-concluido", Boolean(dados.concluido));
+    },
+
+    // Inventário de ferramentas: recebe a lista com o estado de cada slot e só
+    // redesenha quando algo muda de verdade.
+    inventario(itens = []) {
+      if (!el.inventario) return;
+
+      const assinatura = itens.map((item) => `${item.id}:${item.ativo ? 1 : 0}`).join("|");
+      if (assinatura === assinaturaInventario) return;
+      assinaturaInventario = assinatura;
+
+      el.inventario.innerHTML = "";
+      for (const item of itens) {
+        const slot = document.createElement("span");
+        slot.className = `slot${item.ativo ? " ativo" : ""}`;
+        slot.title = item.nome;
+        slot.dataset.id = item.id;
+        slot.innerHTML = `<b>${item.sigla}</b><small>${item.nome}</small>`;
+        el.inventario.appendChild(slot);
+      }
+    },
+
+    modo(texto) {
+      if (el.modo) el.modo.textContent = texto;
+    },
+
+    // Notificação central para marcos (missão iniciada, passo especial). Some
+    // sozinha e não disputa com a caixa de mensagem.
+    toast(texto, tipo = "info", duracao = 2800) {
+      if (!el.toastArea) return;
+
+      const item = document.createElement("div");
+      item.className = `toast ${tipo}`;
+      item.textContent = texto;
+      el.toastArea.appendChild(item);
+
+      setTimeout(() => item.classList.add("sair"), duracao - 320);
+      setTimeout(() => item.remove(), duracao);
+    },
+
+    // "+120" subindo perto da mira: retorno imediato de pontuação.
+    flashPontos(texto, positivo = true) {
+      if (!el.scoreFloat) return;
+
+      const item = document.createElement("span");
+      item.className = `float ${positivo ? "ganho" : "perda"}`;
+      item.textContent = texto;
+      el.scoreFloat.appendChild(item);
+      setTimeout(() => item.remove(), 1000);
+    },
+
     carregando(texto) {
       if (el.loadingMessage) el.loadingMessage.textContent = texto;
     },
 
     ocultarCarregamento() {
       el.loading?.classList.add("hidden");
-    },
-
-    habilitarInicio(rotulo = "ENTRAR NA OFICINA") {
-      if (!el.startBtn) return;
-      el.startBtn.disabled = false;
-      el.startBtn.textContent = rotulo;
-    },
-
-    esconderInstructions() {
-      el.instructions?.classList.add("hidden");
-    },
-
-    aoIniciar(callback) {
-      el.startBtn?.addEventListener("click", callback);
     },
 
     vrAtivo(ativo) {
