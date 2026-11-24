@@ -5,10 +5,13 @@
 // nada da cena: só devolve eixos e botões para o adaptador de VR decidir o que
 // fazer com eles.
 
-const ZONA_MORTA = 0.24;
+const ZONA_MORTA = 0.18;
 
+// Zona morta radial simples: evita drift sem deixar o analógico "preso".
 function eixo(valor) {
-  return Math.abs(valor) < ZONA_MORTA ? 0 : valor;
+  const v = Number.isFinite(valor) ? valor : 0;
+  if (Math.abs(v) <= ZONA_MORTA) return 0;
+  return Math.sign(v) * (Math.abs(v) - ZONA_MORTA) / (1 - ZONA_MORTA);
 }
 
 function primeiroGamepad() {

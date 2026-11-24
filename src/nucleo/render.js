@@ -3,19 +3,19 @@ import * as THREE from "three";
 // Orçamento de renderização por dispositivo. O Quest não segura as mesmas
 // configurações de um desktop, então o modo é reavaliado ao entrar e ao sair do XR.
 const ORCAMENTOS = {
-  desktop: { pixelRatioMax: 1.7, sombras: true, mapaSombra: 2048 },
-  mobile: { pixelRatioMax: 1.25, sombras: true, mapaSombra: 1024 },
-  vr: { pixelRatioMax: 1.0, sombras: false, mapaSombra: 512 }
+  desktop: { pixelRatioMax: 1.35, sombras: true, mapaSombra: 1024 },
+  mobile: { pixelRatioMax: 0.9, sombras: false, mapaSombra: 512 },
+  vr: { pixelRatioMax: 0.85, sombras: false, mapaSombra: 512 }
 };
 
 export function criarRenderizador() {
   const renderer = new THREE.WebGLRenderer({
-    antialias: true,
+    antialias: !window.matchMedia?.("(pointer: coarse)").matches,
     powerPreference: "high-performance"
   });
 
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMapping = THREE.NoToneMapping;
   renderer.toneMappingExposure = 1.0;
   renderer.xr.enabled = true;
 
@@ -41,7 +41,7 @@ export function aplicarQualidade(renderer, luzes = [], modo = modoAtual(renderer
   );
 
   renderer.shadowMap.enabled = orcamento.sombras;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.type = THREE.BasicShadowMap;
 
   for (const luz of luzes) {
     luz.castShadow = orcamento.sombras;

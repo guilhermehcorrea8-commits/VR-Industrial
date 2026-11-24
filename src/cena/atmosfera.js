@@ -186,7 +186,7 @@ export function criarPosProcessamento({ renderer, scene, camera, qualidade = "al
 
     // Um pixel ratio menor que o do renderer compensa o custo dos passes; a
     // diferença some no bloom e na oclusão, que são suaves por natureza.
-    const proporcao = Math.min(renderer.getPixelRatio(), 1.5);
+    const proporcao = Math.min(renderer.getPixelRatio(), novaQualidade === "alta" ? 1.1 : 0.9);
     composer.setPixelRatio(proporcao);
     composer.setSize(largura, altura);
 
@@ -203,7 +203,7 @@ export function criarPosProcessamento({ renderer, scene, camera, qualidade = "al
         distanceExponent: 1.4,
         thickness: 0.7,
         scale: 1.0,
-        samples: 12,
+        samples: 8,
         distanceFallOff: 1.0,
         screenSpaceRadius: false
       });
@@ -214,7 +214,7 @@ export function criarPosProcessamento({ renderer, scene, camera, qualidade = "al
         radius: 4,
         radiusExponent: 1,
         rings: 2,
-        samples: 16
+        samples: 8
       });
       passes.push(gtao);
       composer.addPass(gtao);
@@ -248,7 +248,7 @@ export function criarPosProcessamento({ renderer, scene, camera, qualidade = "al
     largura = Math.max(1, novaLargura);
     altura = Math.max(1, novaAltura);
     if (!composer) return;
-    composer.setPixelRatio(Math.min(renderer.getPixelRatio(), 1.5));
+    composer.setPixelRatio(Math.min(renderer.getPixelRatio(), 0.9));
     composer.setSize(largura, altura);
   }
 

@@ -115,7 +115,7 @@ let preferencias = {
   volume: 0.7,
   sensibilidade: 1,
   sombras: true,
-  qualidade: "alta",
+  qualidade: "equilibrada",
   mudo: false
 };
 
@@ -429,8 +429,12 @@ const controlesMobile = criarControlesMobile({
 });
 
 const leitorGamepad = criarLeitorGamepad({
-  aoMudar: ({ conectado }) =>
-    ui.status(conectado ? "Controle conectado" : "Controle desconectado")
+  aoMudar: ({ conectado, id }) => {
+    const texto = conectado ? `Conectado: ${id || "controle Bluetooth"}` : "Aguardando controle Bluetooth…";
+    ui.status(conectado ? "Controle Bluetooth conectado" : "Controle desconectado");
+    const indicador = document.querySelector("#gamepad-status");
+    if (indicador) indicador.textContent = texto;
+  }
 });
 
 const controlesVR = criarControlesVR({
@@ -454,9 +458,9 @@ const controlesVR = criarControlesVR({
 function qualidadeGrafica() {
   if (renderer.xr.isPresenting) return "baixa";
 
-  const escolhida = preferencias.qualidade ?? "alta";
+  const escolhida = preferencias.qualidade ?? "equilibrada";
   if (tipoDispositivo() === "mobile") {
-    return escolhida === "baixa" ? "baixa" : "equilibrada";
+    return "baixa";
   }
   return escolhida;
 }

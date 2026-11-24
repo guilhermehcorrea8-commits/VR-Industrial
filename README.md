@@ -436,3 +436,11 @@ durante o jogo. Entrar no
 headset sem ter iniciado um modo abre automaticamente o **modo livre**; ao sair
 da sessão, a qualidade, a poeira e a pose do jogador são restauradas e a pausa
 aparece se havia uma missão em andamento.
+
+## Desempenho e controle Bluetooth no VR
+
+- O perfil inicial agora é **Equilibrado** no desktop; celulares e sessões VR usam um orçamento mais leve, com resolução reduzida e sombras dinâmicas desligadas.
+- Para priorizar FPS, escolha **Desempenho** em Configurações. A opção Alta mantém os efeitos visuais adicionais.
+- Para usar um controle Bluetooth, pareie-o primeiro nas configurações do sistema operacional (Android, Windows etc.) e depois abra o simulador em um navegador compatível com WebXR/Gamepad API.
+- No VR: analógico esquerdo move, analógico direito gira e A/RT seleciona. Os gatilhos e grips dos controles do headset continuam disponíveis.
+- O site não faz o pareamento Bluetooth diretamente: o navegador recebe controles Bluetooth que o sistema operacional exponha como gamepad HID. A compatibilidade depende do modelo do controle, dispositivo e navegador.

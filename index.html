@@ -69,7 +69,7 @@
       <p>Mouse: olhar · clique: selecionar</p>
       <p>Celular: arraste para olhar, toque para selecionar</p>
       <p>VR: analógico anda · gatilho seleciona · grip teleporta</p>
-      <p>Gamepad: stick esq. anda · dir. gira · A seleciona</p>
+      <p>VR + controle Bluetooth: stick esquerdo anda · direito gira · A/RT seleciona</p>
       <p><kbd>ESC</kbd> Pausar · liberar o mouse</p>
     </section>
 
@@ -243,14 +243,23 @@
       <div class="config-row">
         <label for="conf-qualidade">Qualidade gráfica</label>
         <select id="conf-qualidade">
-          <option value="alta">Alta — oclusão + bloom</option>
-          <option value="equilibrada">Equilibrada</option>
-          <option value="baixa">Baixa — desempenho</option>
+          <option value="alta">Alta — mais efeitos visuais</option>
+          <option value="equilibrada">Equilibrada — recomendado</option>
+          <option value="baixa">Desempenho — menos efeitos</option>
         </select>
       </div>
 
       <label class="config-check"><input id="conf-sombras" type="checkbox" checked><span>Sombras dinâmicas</span></label>
       <label class="config-check"><input id="conf-mudo" type="checkbox"><span>Silenciar áudio</span></label>
+
+      <div class="bluetooth-help">
+        <strong>CONTROLE BLUETOOTH NO VR</strong>
+        <p>1. Pareie o controle nas configurações Bluetooth do celular ou computador antes de abrir o simulador.</p>
+        <p>2. Entre no modo VR e pressione qualquer botão do controle para o navegador reconhecê-lo.</p>
+        <p>3. Analógico esquerdo: andar · analógico direito: girar · A ou RT: selecionar. Os controles do headset continuam funcionando.</p>
+        <small>Use um controle Bluetooth compatível com Gamepad/HID. O navegador não pareia o controle diretamente pelo site.</small>
+        <div id="gamepad-status" role="status">Aguardando controle Bluetooth…</div>
+      </div>
 
       <div class="panel-actions">
         <button id="btn-conf-tela" class="btn btn-ghost" type="button">TELA CHEIA</button>

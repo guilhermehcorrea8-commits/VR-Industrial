@@ -12,7 +12,7 @@ const CONFIG_PADRAO = {
   volume: 0.7,
   sensibilidade: 1,
   sombras: true,
-  qualidade: "alta",
+  qualidade: "equilibrada",
   mudo: false
 };
 
