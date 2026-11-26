@@ -3,7 +3,7 @@ import * as THREE from "three";
 // Orçamento de renderização por dispositivo. O Quest não segura as mesmas
 // configurações de um desktop, então o modo é reavaliado ao entrar e ao sair do XR.
 const ORCAMENTOS = {
-  desktop: { pixelRatioMax: 1.35, sombras: true, mapaSombra: 1024 },
+  desktop: { pixelRatioMax: 1.35, sombras: true, mapaSombra: 2048 },
   mobile: { pixelRatioMax: 0.9, sombras: false, mapaSombra: 512 },
   vr: { pixelRatioMax: 0.85, sombras: false, mapaSombra: 512 }
 };
@@ -15,8 +15,8 @@ export function criarRenderizador() {
   });
 
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.toneMapping = THREE.NoToneMapping;
-  renderer.toneMappingExposure = 1.0;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.08;
   renderer.xr.enabled = true;
 
   return renderer;
@@ -41,11 +41,20 @@ export function aplicarQualidade(renderer, luzes = [], modo = modoAtual(renderer
   );
 
   renderer.shadowMap.enabled = orcamento.sombras;
-  renderer.shadowMap.type = THREE.BasicShadowMap;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
   for (const luz of luzes) {
     luz.castShadow = orcamento.sombras;
     luz.shadow.mapSize.set(orcamento.mapaSombra, orcamento.mapaSombra);
+    luz.shadow.camera.left = -24;
+    luz.shadow.camera.right = 24;
+    luz.shadow.camera.top = 24;
+    luz.shadow.camera.bottom = -24;
+    luz.shadow.camera.near = 1;
+    luz.shadow.camera.far = 70;
+    luz.shadow.bias = -0.00018;
+    luz.shadow.normalBias = 0.035;
+    luz.shadow.camera.updateProjectionMatrix();
     luz.shadow.map?.dispose();
     luz.shadow.map = null;
   }

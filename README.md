@@ -85,11 +85,11 @@ importa; pode apagá-las quando a nova organização estiver validada.
 
 Geometria lida das fotos (`src/cena/galpao.js`, constantes em `MEDIDAS`):
 
-- salão de **18 × 28 m**, parede de 6,2 m, beiral do fundo a 7,0 m;
+- salão de **20 × 25 m**, parede de 9 m, beiral do fundo a 9,9 m e da frente a 9 m;
 - telhado metálico de **uma água** (inclina para a frente) sobre terças;
 - **treliças de alma paralela em zigue-zague**, pintadas de verde;
 - **tijolo aparente até ~3 m** e reboco branco acima;
-- janelas altas, **portão basculante** de 7 × 4,2 m, tubo azul de ar comprimido
+- janelas altas, **portão basculante** de 5 × 4,2 m, tubo azul de ar comprimido
   e luminárias lineares suspensas;
 - **mureta + vitrine de vidro** separando a oficina do corredor.
 

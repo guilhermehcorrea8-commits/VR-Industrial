@@ -5,6 +5,8 @@ import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { GTAOPass } from "three/addons/postprocessing/GTAOPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
+import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
+import { FXAAShader } from "three/addons/shaders/FXAAShader.js";
 
 // Ambientação: reflexos PBR de ambiente, poeira em suspensão e o pós-
 // processamento (oclusão de ambiente + bloom). O composer fica desligado
@@ -12,9 +14,43 @@ import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 // dois passes de tela cheia em 72 Hz.
 
 export function criarAtmosfera({ scene, renderer, medidas = {} }) {
-  const largura = medidas.largura ?? 18;
-  const profundidade = medidas.profundidade ?? 28;
-  const altura = medidas.alturaFrente ?? 6.4;
+  const largura = medidas.largura ?? 20;
+  const profundidade = medidas.profundidade ?? 25;
+  const altura = medidas.alturaFundo ?? medidas.alturaFrente ?? 9;
+
+  // ---------- CÉU EXTERNO ----------
+  function construirCeu() {
+    const canvas = document.createElement("canvas");
+    canvas.width = 1024;
+    canvas.height = 512;
+    const ctx = canvas.getContext("2d");
+    const gradiente = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    gradiente.addColorStop(0, "#6f91aa");
+    gradiente.addColorStop(0.42, "#a9c0cd");
+    gradiente.addColorStop(0.58, "#d8ddd7");
+    gradiente.addColorStop(1, "#9aa19e");
+    ctx.fillStyle = gradiente;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    for (let i = 0; i < 34; i += 1) {
+      const x = Math.random() * canvas.width;
+      const y = 70 + Math.random() * 190;
+      const raio = 35 + Math.random() * 95;
+      const nuvem = ctx.createRadialGradient(x, y, 0, x, y, raio);
+      nuvem.addColorStop(0, "rgba(244,247,246,0.13)");
+      nuvem.addColorStop(0.55, "rgba(235,240,239,0.06)");
+      nuvem.addColorStop(1, "rgba(235,240,239,0)");
+      ctx.fillStyle = nuvem;
+      ctx.fillRect(x - raio, y - raio * 0.45, raio * 2, raio * 0.9);
+    }
+
+    const textura = new THREE.CanvasTexture(canvas);
+    textura.colorSpace = THREE.SRGBColorSpace;
+    textura.mapping = THREE.EquirectangularReflectionMapping;
+    scene.background = textura;
+    scene.backgroundIntensity = 0.9;
+    scene.fog?.color.set(0xb8c1c1);
+  }
 
   // ---------- AMBIENTE PBR ----------
   let alvoAmbiente = null;
@@ -28,7 +64,7 @@ export function criarAtmosfera({ scene, renderer, medidas = {} }) {
     texturaAmbiente = alvoAmbiente.texture;
 
     scene.environment = texturaAmbiente;
-    scene.environmentIntensity = 0.55;
+    scene.environmentIntensity = 0.42;
 
     sala.dispose?.();
     pmrem.dispose();
@@ -50,17 +86,17 @@ export function criarAtmosfera({ scene, renderer, medidas = {} }) {
 
     for (const material of materiais) {
       if (material.isMeshStandardMaterial || material.isMeshPhysicalMaterial) {
-        material.envMapIntensity = 0.7;
-        material.needsUpdate = true;
+        const metalness = material.metalness ?? 0;
+        material.envMapIntensity = material.transparent ? 0.95 : metalness > 0.55 ? 1.05 : metalness > 0.2 ? 0.62 : 0.38;
       }
     }
   }
 
   // ---------- POEIRA ----------
-  const QUANTIDADE = 380;
+  const QUANTIDADE = 384;
   const meiaL = largura / 2 - 0.4;
   const meiaP = profundidade / 2 - 0.4;
-  const teto = Math.min(altura - 0.6, 5.6);
+  const teto = Math.max(1, (medidas.alturaFrente ?? altura) - 0.6);
   const piso = 0.3;
 
   const posicoes = new Float32Array(QUANTIDADE * 3);
@@ -104,12 +140,12 @@ export function criarAtmosfera({ scene, renderer, medidas = {} }) {
   const materialPoeira = new THREE.PointsMaterial({
     map: texturaPoeira(),
     color: 0xfff4dc,
-    size: 0.055,
+    size: 0.042,
     sizeAttenuation: true,
     transparent: true,
-    opacity: 0.32,
+    opacity: 0.2,
     depthWrite: false,
-    blending: THREE.AdditiveBlending
+    blending: THREE.NormalBlending
   });
 
   const poeira = new THREE.Points(geometriaPoeira, materialPoeira);
@@ -149,6 +185,7 @@ export function criarAtmosfera({ scene, renderer, medidas = {} }) {
     poeira.visible = Boolean(ativa);
   }
 
+  construirCeu();
   construirAmbiente();
 
   return {
@@ -165,6 +202,7 @@ export function criarAtmosfera({ scene, renderer, medidas = {} }) {
 export function criarPosProcessamento({ renderer, scene, camera, qualidade = "alta" }) {
   let composer = null;
   let passes = [];
+  let fxaa = null;
   let qualidadeAtual = "baixa";
   let largura = Math.max(1, window.innerWidth);
   let altura = Math.max(1, window.innerHeight);
@@ -172,8 +210,22 @@ export function criarPosProcessamento({ renderer, scene, camera, qualidade = "al
   function destruir() {
     for (const passe of passes) passe.dispose?.();
     passes = [];
+    fxaa = null;
     composer?.dispose?.();
     composer = null;
+  }
+
+  function proporcaoComposer() {
+    return Math.min(renderer.getPixelRatio(), qualidadeAtual === "alta" ? 1.0 : 0.8);
+  }
+
+  function atualizarFXAA() {
+    if (!fxaa) return;
+    const proporcao = proporcaoComposer();
+    fxaa.material.uniforms.resolution.value.set(
+      1 / Math.max(1, largura * proporcao),
+      1 / Math.max(1, altura * proporcao)
+    );
   }
 
   function construir(novaQualidade) {
@@ -186,45 +238,43 @@ export function criarPosProcessamento({ renderer, scene, camera, qualidade = "al
 
     // Um pixel ratio menor que o do renderer compensa o custo dos passes; a
     // diferença some no bloom e na oclusão, que são suaves por natureza.
-    const proporcao = Math.min(renderer.getPixelRatio(), novaQualidade === "alta" ? 1.1 : 0.9);
-    composer.setPixelRatio(proporcao);
+    composer.setPixelRatio(proporcaoComposer());
     composer.setSize(largura, altura);
 
     const renderPass = new RenderPass(scene, camera);
     passes.push(renderPass);
     composer.addPass(renderPass);
 
-    if (novaQualidade === "alta") {
-      const gtao = new GTAOPass(scene, camera, largura, altura);
-      gtao.output = GTAOPass.OUTPUT.Default;
-      gtao.blendIntensity = 0.85;
-      gtao.updateGtaoMaterial({
-        radius: 0.45,
-        distanceExponent: 1.4,
-        thickness: 0.7,
-        scale: 1.0,
-        samples: 8,
-        distanceFallOff: 1.0,
-        screenSpaceRadius: false
-      });
-      gtao.updatePdMaterial({
-        lumaPhi: 10,
-        depthPhi: 2,
-        normalPhi: 3,
-        radius: 4,
-        radiusExponent: 1,
-        rings: 2,
-        samples: 8
-      });
-      passes.push(gtao);
-      composer.addPass(gtao);
-    }
+    const alta = novaQualidade === "alta";
+    const gtao = new GTAOPass(scene, camera, largura, altura);
+    gtao.output = GTAOPass.OUTPUT.Default;
+    gtao.blendIntensity = alta ? 0.88 : 0.62;
+    gtao.updateGtaoMaterial({
+      radius: alta ? 0.45 : 0.32,
+      distanceExponent: 1.4,
+      thickness: 0.7,
+      scale: 1.0,
+      samples: alta ? 8 : 4,
+      distanceFallOff: 1.0,
+      screenSpaceRadius: false
+    });
+    gtao.updatePdMaterial({
+      lumaPhi: 10,
+      depthPhi: 2,
+      normalPhi: 3,
+      radius: alta ? 4 : 3,
+      radiusExponent: 1,
+      rings: 2,
+      samples: alta ? 8 : 4
+    });
+    passes.push(gtao);
+    composer.addPass(gtao);
 
     const bloom = new UnrealBloomPass(
       new THREE.Vector2(largura, altura),
-      novaQualidade === "alta" ? 0.3 : 0.22,
-      0.55,
-      0.86
+      alta ? 0.24 : 0.16,
+      0.5,
+      0.92
     );
     passes.push(bloom);
     composer.addPass(bloom);
@@ -232,6 +282,11 @@ export function criarPosProcessamento({ renderer, scene, camera, qualidade = "al
     const output = new OutputPass();
     passes.push(output);
     composer.addPass(output);
+
+    fxaa = new ShaderPass(FXAAShader);
+    passes.push(fxaa);
+    composer.addPass(fxaa);
+    atualizarFXAA();
   }
 
   // No XR o composer é contornado: o runtime compõe as duas vistas e os
@@ -248,8 +303,9 @@ export function criarPosProcessamento({ renderer, scene, camera, qualidade = "al
     largura = Math.max(1, novaLargura);
     altura = Math.max(1, novaAltura);
     if (!composer) return;
-    composer.setPixelRatio(Math.min(renderer.getPixelRatio(), 0.9));
+    composer.setPixelRatio(proporcaoComposer());
     composer.setSize(largura, altura);
+    atualizarFXAA();
   }
 
   function setQualidade(nova) {

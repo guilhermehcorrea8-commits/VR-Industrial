@@ -33,7 +33,7 @@ const CONFIG = {
   sensibilidadeToque: 0.0045,
   limiteVerticalVisao: 1.35,
   alturaCamera: 1.66,
-  posicaoInicial: [0, 0, 9]
+  posicaoInicial: [0, 0, 5.75]
 };
 
 // ---------- NÚCLEO ----------
@@ -45,8 +45,8 @@ renderer.domElement.id = "oficina-canvas";
 document.querySelector("#game").prepend(renderer.domElement);
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x93a0a8);
-scene.fog = new THREE.Fog(0x93a0a8, 26, 78);
+scene.background = new THREE.Color(0xaebcc5);
+scene.fog = new THREE.Fog(0xaebcc5, 32, 88);
 
 const camera = new THREE.PerspectiveCamera(
   70,
@@ -66,18 +66,20 @@ ui.ligarPainel(painelVR);
 const { mats } = criarMateriais(renderer);
 
 // ---------- ILUMINAÇÃO ----------
-scene.add(new THREE.HemisphereLight(0xdfe9f2, 0x5c5148, 1.7));
+scene.add(new THREE.HemisphereLight(0xc9dded, 0x65574a, 1.25));
 
-const sol = new THREE.DirectionalLight(0xfff2dc, 2.4);
-sol.position.set(-14, 18, 12);
+const sol = new THREE.DirectionalLight(0xffe6bd, 3.0);
+sol.position.set(24, 7.2, -8);
+sol.target.position.set(0, 0, 2);
 sol.castShadow = true;
-scene.add(sol);
+scene.add(sol, sol.target);
 
-// Luz entrando pela fileira de janelas.
-const luzJanela = new THREE.DirectionalLight(0xe8f1ff, 1.1);
-luzJanela.position.set(10, 9, -6);
+// Luz fria de preenchimento entrando pelos janelões do fundo.
+const luzJanela = new THREE.DirectionalLight(0xdcecff, 1.35);
+luzJanela.position.set(3, 4.5, -24);
+luzJanela.target.position.set(0, 0, 4);
 luzJanela.castShadow = true;
-scene.add(luzJanela);
+scene.add(luzJanela, luzJanela.target);
 
 const luzesComSombra = [sol, luzJanela];
 
@@ -86,10 +88,9 @@ const galpao = criarGalpao(mats, MEDIDAS);
 scene.add(galpao.grupo);
 
 galpao.luminarias
-  .filter((_, indice) => indice % 3 === 0)
-  .slice(0, 6)
+  .filter(({ z }) => Math.abs(z) < 1)
   .forEach(({ x, y, z }) => {
-    const luz = new THREE.PointLight(0xfff3d6, 14, 11, 2);
+    const luz = new THREE.PointLight(0xfff0d2, 90, 22, 2);
     luz.position.set(x, y, z);
     scene.add(luz);
   });
@@ -101,7 +102,8 @@ const atmosfera = criarAtmosfera({
   medidas: {
     largura: MEDIDAS.largura,
     profundidade: MEDIDAS.profundidade,
-    alturaFrente: MEDIDAS.alturaFrente
+    alturaFrente: MEDIDAS.alturaFrente,
+    alturaFundo: MEDIDAS.alturaFundo
   }
 });
 
@@ -126,6 +128,11 @@ let ferramentaRecente = { id: null, em: 0 };
 const maquinas = new THREE.Group();
 maquinas.name = "Maquinas";
 scene.add(maquinas);
+
+const sombrasContato = new THREE.Group();
+sombrasContato.name = "SombrasContato";
+const geometriaSombraContato = new THREE.PlaneGeometry(1, 1);
+scene.add(sombrasContato);
 
 let furadeira = null;
 
@@ -474,6 +481,8 @@ function ajustarQualidade(modo = modoAtual(renderer)) {
     renderer.shadowMap.needsUpdate = true;
   }
 
+  mats.sombraContato.opacity = renderer.shadowMap.enabled ? 0.1 : 0.24;
+
   posProcessamento?.setSize(window.innerWidth, window.innerHeight);
   posProcessamento?.setQualidade(qualidadeGrafica());
 }
@@ -503,6 +512,7 @@ function travarMouse() {
 const posJogadorAnterior = jogador.position.clone();
 let bobFase = 0;
 let distanciaPassos = 0;
+let estavaAndando = false;
 
 function resetarJogador() {
   if (renderer.xr.isPresenting) return;
@@ -514,6 +524,7 @@ function resetarJogador() {
   posJogadorAnterior.copy(jogador.position);
   bobFase = 0;
   distanciaPassos = 0;
+  estavaAndando = false;
 }
 
 function iniciarSessao(modo, indice = 0) {
@@ -647,6 +658,18 @@ async function carregarMaquinas() {
     drawCalls += montada.drawCalls;
     pecas += montada.interativas.length;
     colisores.push(montada.colisor);
+
+    const limitesMaquina = new THREE.Box3().setFromObject(montada.grupo);
+    if (!limitesMaquina.isEmpty()) {
+      const tamanhoMaquina = limitesMaquina.getSize(new THREE.Vector3());
+      const centroMaquina = limitesMaquina.getCenter(new THREE.Vector3());
+      const sombra = new THREE.Mesh(geometriaSombraContato, mats.sombraContato);
+      sombra.rotation.x = -Math.PI / 2;
+      sombra.position.set(centroMaquina.x, 0.009, centroMaquina.z);
+      sombra.scale.set(tamanhoMaquina.x + 0.7, tamanhoMaquina.z + 0.7, 1);
+      sombra.renderOrder = 1;
+      sombrasContato.add(sombra);
+    }
 
     if (montada.id === "furadeira") furadeira = criarFuradeira(montada);
 
@@ -815,15 +838,19 @@ function animar() {
     const andando = andou > 0.0004;
 
     if (andando) {
+      if (!estavaAndando) distanciaPassos = 1;
       distanciaPassos += andou;
       bobFase += delta * (entrada.corrida ? 12 : 7.5);
 
-      const limite = entrada.corrida ? 1.5 : 1.15;
+      const limite = entrada.corrida ? 0.72 : 1;
       if (distanciaPassos >= limite) {
         distanciaPassos = 0;
-        audio.passo();
+        audio.passo(entrada.corrida);
       }
+    } else {
+      distanciaPassos = 0;
     }
+    estavaAndando = andando;
 
     if (!renderer.xr.isPresenting) {
       const alvoY = CONFIG.alturaCamera + (andando ? Math.sin(bobFase) * 0.028 : 0);
@@ -847,6 +874,11 @@ function animar() {
     if (!renderer.xr.isPresenting) {
       camera.position.y += (CONFIG.alturaCamera - camera.position.y) * Math.min(1, delta * 8);
     }
+  }
+
+  if (!ativoJogo) {
+    distanciaPassos = 0;
+    estavaAndando = false;
   }
 
   posJogadorAnterior.copy(jogador.position);

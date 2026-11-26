@@ -15,7 +15,7 @@ export const CATALOGO = [
     id: "cnc",
     nome: "Centro de usinagem CNC",
     assinatura: "CNCScreen",
-    x: -4.5, z: -12.4, rotY: 0,
+    x: -5.87, z: -9.63, rotY: 0,
     pecas: [
       ["LeftSlidingDoor", "porta_cnc", "Porta deslizante da CNC", "Abrir a proteção antes de montar a peça"],
       ["RightSlidingDoor", "porta_cnc", "Porta deslizante da CNC", "Abrir a proteção antes de montar a peça"],
@@ -31,7 +31,7 @@ export const CATALOGO = [
     id: "torno",
     nome: "Torno mecânico",
     assinatura: "TailstockBody",
-    x: 0.5, z: -12.9, rotY: 0,
+    x: -1.4, z: -9.88, rotY: 0,
     pecas: [
       ["Headstock", "castanho_torno", "Cabeçote do torno", "Identificar o cabeçote fixo"],
       ["ChuckBody", "mandril_torno", "Mandril do torno", "Apertar a peça no mandril"],
@@ -49,7 +49,7 @@ export const CATALOGO = [
     id: "esteira",
     nome: "Esteira transportadora",
     assinatura: "Belt_Top",
-    x: 4.9, z: -12.6, rotY: 0,
+    x: 3.53, z: -9.63, rotY: 0,
     pecas: [
       ["Belt_Top", "correia_esteira", "Correia da esteira", "Verificar sentido e tensão da correia"],
       ["End_Roller", "rolete_esteira", "Rolete de ponta", "Inspecionar o rolete motriz"],
@@ -66,7 +66,7 @@ export const CATALOGO = [
     id: "furadeira",
     nome: "Furadeira de coluna",
     assinatura: "QuillHousing",
-    x: 7.6, z: -8.5, rotY: -Math.PI / 2,
+    x: 8.33, z: -3.63, rotY: -Math.PI / 2,
     pecas: [
       // O mandril do modelo atual é o corpo que pende do colarinho (ChuckBody,
       // Ø4 cm): sem luva de mordsas nem anel separados, é ele a peça que o
@@ -106,7 +106,7 @@ export const CATALOGO = [
     id: "clp",
     nome: "Painel de automação CLP",
     assinatura: "CLP_CPU",
-    x: 8.0, z: -5.0, rotY: -Math.PI / 2,
+    x: 7.93, z: -9.63, rotY: -Math.PI / 2,
     pecas: [
       ["Panel_Door_Left", "porta_clp", "Porta do painel CLP", "Abrir o compartimento de comando"],
       ["Door_Handle", "porta_clp", "Porta do painel CLP", "Abrir o compartimento de comando"],
@@ -126,7 +126,7 @@ export const CATALOGO = [
     id: "bancada_extra_longa",
     nome: "Bancada de ajustagem com quatro morsas",
     assinatura: "Morsa_4_corpo",
-    x: 0, z: 5.5, rotY: 0,
+    x: 0, z: 9.38, rotY: 0,
     pecas: [
       ["Morsa_1_corpo", "morsa_bancada_1", "Morsa 1 da bancada", "Fixar a peça na morsa 1"],
       ["Morsa_2_corpo", "morsa_bancada_2", "Morsa 2 da bancada", "Fixar a peça na morsa 2"],
@@ -140,7 +140,7 @@ export const CATALOGO = [
     id: "bancada_central_senai",
     nome: "Bancada SENAI com armário",
     assinatura: "Morsa1_Corpo",
-    x: -6.0, z: 3.0, rotY: Math.PI / 2,
+    x: -7.87, z: 7.75, rotY: Math.PI / 2,
     pecas: [
       ["Tampo_aco_macico", "tampo_bancada_senai", "Tampo da bancada SENAI", "Limpar e nivelar o tampo"],
       ["Morsa1_Corpo", "morsa_bancada_senai", "Morsa da bancada SENAI", "Fixar a peça na morsa"],
@@ -153,7 +153,7 @@ export const CATALOGO = [
     id: "bancada_ajustagem",
     nome: "Bancada de ajustagem azul",
     assinatura: "MorsaAzul_Corpo",
-    x: -7.3, z: -5.5, rotY: Math.PI / 2,
+    x: -8.47, z: -5.13, rotY: Math.PI / 2,
     pecas: [
       ["MorsaAzul_Corpo", "morsa_azul_ajustagem", "Morsa azul da bancada", "Fixar a peça na morsa azul"],
       ["Paquimetro_Haste", "paquimetro_ajustagem", "Paquímetro", "Medir a peça com o paquímetro"],
@@ -167,7 +167,7 @@ export const CATALOGO = [
     assinatura: "Morsa_traseira_direita_corpo",
     // É a única peça do arquivo desenhada de costas: as morsas "frontais" ficam
     // em Z negativo, então o giro inverte em relação às outras bancadas.
-    x: -7.3, z: -1.0, rotY: -Math.PI / 2,
+    x: -8.47, z: 0.63, rotY: -Math.PI / 2,
     pecas: [
       ["Tampo_de_madeira", "tampo_bancada_central", "Tampo da bancada central", "Desobstruir o tampo"],
       ["Morsa_frontal_esquerda_corpo", "morsa_frontal_esquerda", "Morsa frontal esquerda", "Fixar a peça na morsa frontal"],
@@ -181,7 +181,7 @@ export const CATALOGO = [
     id: "bancada_prensa",
     nome: "Bancada com prensa vertical",
     assinatura: "Fuso_vertical_escuro",
-    x: 7.6, z: 8.0, rotY: -Math.PI / 2,
+    x: 7.73, z: 2.38, rotY: -Math.PI / 2,
     pecas: [
       ["Tampo_trapezoidal_aco_escuro", "tampo_prensa", "Tampo da prensa", "Posicionar a peça sob a prensa"],
       ["Base_prensa_azul", "base_prensa", "Base da prensa", "Conferir a fixação da base"],

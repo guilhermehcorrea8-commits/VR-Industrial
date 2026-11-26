@@ -287,14 +287,26 @@ export function criarAudio(opcoes = {}) {
     tom({ freq: 1567.98, tipo: "sine", duracao: 0.5, ganho: 0.04, atraso: 0.46 });
   }
 
-  function passo() {
+  function passo(corrida = false) {
     if (!pronto || pausado) return;
     const agora = performance.now();
-    if (agora - ultimoPasso < 220) return;
+    if (agora - ultimoPasso < (corrida ? 95 : 150)) return;
     ultimoPasso = agora;
 
-    ruidoCurto({ duracao: 0.075, freq: 340, ganho: 0.05, q: 0.8 });
-    tom({ freq: 92, freqFinal: 58, tipo: "sine", duracao: 0.08, ganho: 0.035 });
+    const variacao = 0.9 + Math.random() * 0.2;
+    ruidoCurto({
+      duracao: corrida ? 0.065 : 0.085,
+      freq: (corrida ? 440 : 360) * variacao,
+      ganho: corrida ? 0.085 : 0.065,
+      q: corrida ? 1.1 : 0.8
+    });
+    tom({
+      freq: corrida ? 88 : 92,
+      freqFinal: 58,
+      tipo: "sine",
+      duracao: corrida ? 0.065 : 0.08,
+      ganho: corrida ? 0.055 : 0.04
+    });
   }
 
   function ambiente(ligado) {

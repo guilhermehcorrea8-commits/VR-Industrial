@@ -29,6 +29,7 @@ export function criarControlesComputador({ camera, renderer, entrada, aoSelecion
 
     if (tecla === "shift") {
       teclas.add("shift");
+      recalcular();
       return;
     }
 
